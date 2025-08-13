@@ -1,0 +1,24 @@
+---
+description: Global rules for this agent project
+globs:
+  - "**"
+alwaysApply: true
+---
+
+
+## Guidelines
+- Always use typescript
+- Always use react-hook-form when building form components
+- Always use yup for validation (and use yup with react-hook-form)
+- Use shadcn components stored in components/ and components/ui when possible
+
+## CLI Guidelines
+- we use pnpm in this codebase
+- use pnpx inplace of npx to run scripts
+- use pnpm add <package> to install packages
+- use pnpm remove <package> to remove packages
+
+## Convex Rules
+- We use convex as our database with two way sync between client and server
+- generate mutations, queries, and actions with convex in the /convex folder
+- Use useQuery() for reading data and useMutation() for writing data - these hooks automatically handle loading states and real-time updates
