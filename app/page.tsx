@@ -175,16 +175,45 @@ export default function Home() {
               </div>
 
               {/* Content based on status */}
-              {paperAnalysis?.status === 'completed' && paperAnalysis.response ? (
+              {paperAnalysis?.response ? (
                 <div className="space-y-6">
-                  <h2 className="text-2xl font-bold text-gray-900">Analysis Complete</h2>
+                  <div className="flex items-center justify-between">
+                    <h2 className="text-2xl font-bold text-gray-900">
+                      {paperAnalysis.status === 'completed'
+                        ? 'Analysis Complete'
+                        : 'Analysis in Progress'}
+                    </h2>
+                    {paperAnalysis.status === 'processing' &&
+                      paperAnalysis.response?.isStreaming && (
+                        <div className="flex items-center space-x-2 text-blue-600">
+                          <div className="h-2 w-2 animate-pulse rounded-full bg-blue-600"></div>
+                          <span className="text-sm font-medium">Streaming...</span>
+                        </div>
+                      )}
+                  </div>
+
                   <div className="rounded-lg bg-gray-50 p-6">
                     <h3 className="mb-3 text-lg font-semibold text-gray-900">
-                      Full Response JSON:
+                      {paperAnalysis.status === 'completed'
+                        ? 'Final Response:'
+                        : 'Response (Live):'}
                     </h3>
-                    <pre className="max-h-96 overflow-auto rounded border bg-white p-4 text-sm whitespace-pre-wrap text-gray-700">
-                      {JSON.stringify(paperAnalysis.response, null, 2)}
-                    </pre>
+                    <div className="max-h-96 overflow-auto rounded border bg-white p-4">
+                      {paperAnalysis.response?.isStreaming ? (
+                        // Show streaming content as plain text
+                        <div className="text-sm whitespace-pre-wrap text-gray-700">
+                          {paperAnalysis.response.content}
+                          {paperAnalysis.status === 'processing' && (
+                            <span className="ml-1 inline-block h-5 w-2 animate-pulse bg-blue-500"></span>
+                          )}
+                        </div>
+                      ) : (
+                        // Show final formatted JSON
+                        <pre className="text-sm whitespace-pre-wrap text-gray-700">
+                          {JSON.stringify(paperAnalysis.response, null, 2)}
+                        </pre>
+                      )}
+                    </div>
                   </div>
                 </div>
               ) : (
@@ -194,7 +223,7 @@ export default function Home() {
                   </div>
                   <p className="text-gray-600">
                     {paperAnalysis?.status === 'pending' && 'Waiting to start processing...'}
-                    {paperAnalysis?.status === 'processing' && 'AI is analyzing the paper...'}
+                    {paperAnalysis?.status === 'processing' && 'AI is starting analysis...'}
                     {paperAnalysis?.status === 'failed' && 'Analysis failed. Please try again.'}
                     {!paperAnalysis && 'Loading analysis...'}
                   </p>

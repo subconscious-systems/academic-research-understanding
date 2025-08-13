@@ -35,8 +35,8 @@ export const processPaper = internalAction({
         status: 'processing',
       });
 
-      // Call OpenAI API to process the paper URL
-      const completion = await openai.chat.completions.create({
+      // Call OpenAI API with streaming to process the paper URL
+      const stream = await openai.chat.completions.create({
         model: 'gpt-4o-mini',
         messages: [
           {
@@ -59,29 +59,52 @@ export const processPaper = internalAction({
         ],
         temperature: 0.3,
         max_tokens: 2000,
+        stream: true,
       });
 
-      const response: string | null = completion.choices[0]?.message?.content;
+      let accumulatedResponse = '';
+      let totalTokens = 0;
 
-      if (!response) {
+      // Process the stream and update the database with each chunk
+      for await (const chunk of stream) {
+        const content = chunk.choices[0]?.delta?.content;
+        if (content) {
+          accumulatedResponse += content;
+
+          // Update the database with the current accumulated response
+          await ctx.runMutation(internal.papers.updatePaperWithResponse, {
+            id: args.paperId,
+            response: { content: accumulatedResponse, isStreaming: true },
+            status: 'processing',
+            tokensRead: totalTokens,
+          });
+        }
+
+        // Track token usage if available
+        if (chunk.usage?.total_tokens) {
+          totalTokens = chunk.usage.total_tokens;
+        }
+      }
+
+      if (!accumulatedResponse) {
         throw new Error('No response received from OpenAI');
       }
 
-      // Parse the response as JSON if possible
+      // Try to parse the final response as JSON
       let parsedResponse: unknown;
       try {
-        parsedResponse = JSON.parse(response);
+        parsedResponse = JSON.parse(accumulatedResponse);
       } catch {
         // If JSON parsing fails, store as plain text
-        parsedResponse = { content: response };
+        parsedResponse = { content: accumulatedResponse };
       }
 
-      // Save the response to the paper record
+      // Final update with completed status and parsed response
       await ctx.runMutation(internal.papers.updatePaperWithResponse, {
         id: args.paperId,
         response: parsedResponse,
         status: 'completed',
-        tokensRead: completion.usage?.total_tokens || 0,
+        tokensRead: totalTokens,
       });
 
       return {
