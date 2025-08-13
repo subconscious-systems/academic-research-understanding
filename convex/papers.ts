@@ -1,8 +1,9 @@
-import { query, internalMutation } from './_generated/server';
+import { internal } from './_generated/api';
+import { query, internalMutation, mutation } from './_generated/server';
 import { v } from 'convex/values';
 
 // Create a new paper analysis request
-export const createPaperAnalysis = internalMutation({
+export const createPaperAnalysis = mutation({
   args: {
     paperUrl: v.string(),
   },
@@ -12,6 +13,8 @@ export const createPaperAnalysis = internalMutation({
       status: 'pending',
       createdAt: Date.now(),
     });
+
+    await ctx.scheduler.runAfter(0, internal.actions.processPaper, { paperId: analysisId });
 
     return analysisId;
   },

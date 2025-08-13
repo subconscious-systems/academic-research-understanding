@@ -1,6 +1,6 @@
 import { httpRouter } from 'convex/server';
 import { httpAction } from './_generated/server';
-import { internal } from './_generated/api';
+import { api } from './_generated/api';
 
 const http = httpRouter();
 
@@ -23,7 +23,7 @@ http.route({
       }
 
       // Store the analysis request in the database
-      const analysisId = await ctx.runMutation(internal.papers.createPaperAnalysis, {
+      const analysisId = await ctx.runMutation(api.papers.createPaperAnalysis, {
         paperUrl,
       });
 

@@ -1,11 +1,22 @@
 'use client';
 
 import { useState } from 'react';
+import { useMutation, useQuery } from 'convex/react';
+import { api } from '../convex/_generated/api';
+import { Id } from '../convex/_generated/dataModel';
 
 export default function Home() {
   const [paperInput, setPaperInput] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   const [showReport, setShowReport] = useState(false);
+  const [analysisId, setAnalysisId] = useState<Id<'paperAnalyses'> | null>(null);
+
+  // Convex hooks
+  const createPaperAnalysis = useMutation(api.papers.createPaperAnalysis);
+  const paperAnalysis = useQuery(
+    api.papers.getPaperAnalysis,
+    analysisId ? { id: analysisId } : 'skip',
+  );
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -14,26 +25,19 @@ export default function Home() {
     setIsLoading(true);
     setShowReport(false);
 
-    // Simulate 5-second loading
-    setTimeout(() => {
-      setIsLoading(false);
-      setShowReport(true);
-    }, 5000);
-  };
+    try {
+      // Create paper analysis using Convex
+      const newAnalysisId = await createPaperAnalysis({
+        paperUrl: paperInput.trim(),
+      });
 
-  const mockReport = {
-    title: 'Understanding Transformer Architecture in Natural Language Processing',
-    summary:
-      'This paper introduces a novel approach to attention mechanisms in neural networks, demonstrating significant improvements in language understanding tasks.',
-    keyFindings: [
-      'Multi-head attention provides 23% improvement over traditional RNN approaches',
-      'Self-attention mechanism reduces computational complexity by 40%',
-      'Model achieves state-of-the-art results on GLUE benchmark',
-    ],
-    methodology:
-      'The authors propose a transformer-based architecture that relies entirely on attention mechanisms, dispensing with recurrence and convolutions entirely.',
-    implications:
-      'This work has significant implications for the field of NLP, providing a more efficient and effective approach to language modeling.',
+      setAnalysisId(newAnalysisId);
+      setShowReport(true);
+      setIsLoading(false);
+    } catch (error) {
+      console.error('Error creating paper analysis:', error);
+      setIsLoading(false);
+    }
   };
 
   return (
@@ -104,6 +108,7 @@ export default function Home() {
                   onClick={() => {
                     setShowReport(false);
                     setPaperInput('');
+                    setAnalysisId(null);
                   }}
                   className="mb-4 flex items-center space-x-2 font-medium text-blue-600 hover:text-blue-800"
                 >
@@ -117,41 +122,84 @@ export default function Home() {
                   </svg>
                   <span>Analyze another paper</span>
                 </button>
-                <h2 className="mb-4 text-3xl font-bold text-gray-900">{mockReport.title}</h2>
+
+                {/* Paper URL Display */}
+                <div className="mb-4 rounded-lg bg-gray-50 p-4">
+                  <h3 className="mb-2 text-sm font-semibold text-gray-700">Paper URL:</h3>
+                  <a
+                    href={paperInput}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="break-all text-blue-600 underline hover:text-blue-800"
+                  >
+                    {paperInput}
+                  </a>
+                </div>
+
+                {/* Status Display */}
+                <div className="mb-6">
+                  <div className="flex items-center space-x-3">
+                    <span className="text-sm font-semibold text-gray-700">Status:</span>
+                    {paperAnalysis ? (
+                      <div className="flex items-center space-x-2">
+                        {paperAnalysis.status === 'pending' && (
+                          <>
+                            <div className="h-3 w-3 animate-pulse rounded-full bg-yellow-500"></div>
+                            <span className="font-medium text-yellow-600">Pending</span>
+                          </>
+                        )}
+                        {paperAnalysis.status === 'processing' && (
+                          <>
+                            <div className="h-3 w-3 animate-spin rounded-full border-b-2 border-blue-600"></div>
+                            <span className="font-medium text-blue-600">Processing</span>
+                          </>
+                        )}
+                        {paperAnalysis.status === 'completed' && (
+                          <>
+                            <div className="h-3 w-3 rounded-full bg-green-500"></div>
+                            <span className="font-medium text-green-600">Completed</span>
+                          </>
+                        )}
+                        {paperAnalysis.status === 'failed' && (
+                          <>
+                            <div className="h-3 w-3 rounded-full bg-red-500"></div>
+                            <span className="font-medium text-red-600">Failed</span>
+                          </>
+                        )}
+                      </div>
+                    ) : (
+                      <span className="text-gray-500">Loading...</span>
+                    )}
+                  </div>
+                </div>
               </div>
 
-              <div className="space-y-8">
-                {/* Summary */}
-                <div>
-                  <h3 className="mb-3 text-xl font-semibold text-gray-900">Summary</h3>
-                  <p className="leading-relaxed text-gray-700">{mockReport.summary}</p>
+              {/* Content based on status */}
+              {paperAnalysis?.status === 'completed' && paperAnalysis.response ? (
+                <div className="space-y-6">
+                  <h2 className="text-2xl font-bold text-gray-900">Analysis Complete</h2>
+                  <div className="rounded-lg bg-gray-50 p-6">
+                    <h3 className="mb-3 text-lg font-semibold text-gray-900">
+                      Full Response JSON:
+                    </h3>
+                    <pre className="max-h-96 overflow-auto rounded border bg-white p-4 text-sm whitespace-pre-wrap text-gray-700">
+                      {JSON.stringify(paperAnalysis.response, null, 2)}
+                    </pre>
+                  </div>
                 </div>
-
-                {/* Key Findings */}
-                <div>
-                  <h3 className="mb-3 text-xl font-semibold text-gray-900">Key Findings</h3>
-                  <ul className="space-y-2">
-                    {mockReport.keyFindings.map((finding, index) => (
-                      <li key={index} className="flex items-start space-x-3">
-                        <div className="mt-2 h-2 w-2 flex-shrink-0 rounded-full bg-blue-500"></div>
-                        <p className="text-gray-700">{finding}</p>
-                      </li>
-                    ))}
-                  </ul>
+              ) : (
+                <div className="py-8 text-center">
+                  <div className="mb-4">
+                    <div className="mx-auto h-8 w-8 animate-spin rounded-full border-b-2 border-blue-600"></div>
+                  </div>
+                  <p className="text-gray-600">
+                    {paperAnalysis?.status === 'pending' && 'Waiting to start processing...'}
+                    {paperAnalysis?.status === 'processing' && 'AI is analyzing the paper...'}
+                    {paperAnalysis?.status === 'failed' && 'Analysis failed. Please try again.'}
+                    {!paperAnalysis && 'Loading analysis...'}
+                  </p>
                 </div>
-
-                {/* Methodology */}
-                <div>
-                  <h3 className="mb-3 text-xl font-semibold text-gray-900">Methodology</h3>
-                  <p className="leading-relaxed text-gray-700">{mockReport.methodology}</p>
-                </div>
-
-                {/* Implications */}
-                <div>
-                  <h3 className="mb-3 text-xl font-semibold text-gray-900">Implications</h3>
-                  <p className="leading-relaxed text-gray-700">{mockReport.implications}</p>
-                </div>
-              </div>
+              )}
             </div>
           </div>
         )}
