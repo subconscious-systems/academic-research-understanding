@@ -192,7 +192,7 @@ export default function Home() {
                       // Clear error when user starts typing
                       if (urlError) setUrlError('');
                     }}
-                    placeholder="https://arxiv.org/abs/1706.03762"
+                    placeholder="ex. https://arxiv.org/abs/1706.03762"
                     className={`w-full rounded-xl border-2 px-4 py-4 text-lg transition-all duration-200 outline-none ${
                       urlError
                         ? 'border-red-500 focus:border-red-500 focus:ring-4 focus:ring-red-100'
@@ -208,7 +208,7 @@ export default function Home() {
               <button
                 type="submit"
                 disabled={!paperInput.trim() || isLoading}
-                className="w-full transform rounded-xl bg-blue-600 px-8 py-4 text-lg font-semibold text-white transition-all duration-200 hover:scale-[1.02] hover:bg-blue-700 disabled:scale-100 disabled:cursor-not-allowed disabled:bg-gray-400"
+                className="w-full transform cursor-pointer rounded-xl bg-blue-600 px-8 py-4 text-lg font-semibold text-white transition-all duration-200 hover:scale-[1.02] hover:bg-blue-700 disabled:scale-100 disabled:cursor-not-allowed disabled:bg-gray-400"
               >
                 {isLoading ? (
                   <div className="flex items-center justify-center space-x-3">
@@ -220,6 +220,20 @@ export default function Home() {
                 )}
               </button>
             </form>
+
+            {/* Demo Button */}
+            <div className="mt-8 text-center">
+              <button
+                onClick={() => {
+                  setPaperInput('https://arxiv.org/abs/2507.16784');
+                  // Clear any previous errors
+                  setUrlError('');
+                }}
+                className="cursor-pointer rounded-lg border border-gray-300 px-6 py-3 text-sm font-medium text-gray-600 transition-colors duration-200 hover:border-blue-400 hover:text-blue-600"
+              >
+                Don&apos;t have a research paper ready? We&apos;ve got you covered.
+              </button>
+            </div>
           </div>
         ) : (
           /* Report Display - Full Screen */
@@ -428,7 +442,7 @@ export default function Home() {
               target="_blank"
               rel="noopener noreferrer"
             >
-              Powered by Subconscious
+              Lux/Cognition/Modal Hackathon 2025 - Powered by Subconscious
             </a>
           </div>
         </footer>

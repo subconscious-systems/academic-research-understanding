@@ -239,7 +239,7 @@ export const processPaper = internalAction({
           },
           {
             role: 'user',
-            content: `Analyze the academic paper at this URL: ${paper.paperUrl}`,
+            content: `Research this article:: ${paper.paperUrl}`,
           },
         ],
         stream: true,
