@@ -258,9 +258,9 @@ export const TreeView = ({ output }: { output: any }) => {
         <div className="flex flex-col">
           <div className="grid h-2 w-full" style={{ gridTemplateColumns: gridTemplate }}>
             <div className="grid h-full w-full grid-cols-2">
-              <div className={cn('h-full w-full border-r-2 border-gray-600')}></div>
-              <div className={cn('h-full w-full border-gray-600')}></div>
-              <div className={cn('h-full w-full border-r-2 border-gray-600')}></div>
+              <div className={cn('h-full w-full border-r-4 border-yellow-400')}></div>
+              <div className={cn('h-full w-full border-yellow-400')}></div>
+              <div className={cn('h-full w-full border-r-4 border-yellow-400')}></div>
               <div className="h-full w-full"></div>
             </div>
           </div>
@@ -280,51 +280,97 @@ export const TreeView = ({ output }: { output: any }) => {
                   return (
                     <TaskNodeTooltip key={cellKey} cell={cell} cellKey={cellKey}>
                       <div className="animate-in fade-in slide-in-from-left-4 flex h-full w-full min-w-0 cursor-default items-center justify-center py-2 duration-200">
-                        <div className="border-primary/20 bg-primary/5 flex h-fit min-h-[48px] w-full min-w-0 flex-1 flex-col items-start justify-start rounded-md border p-2">
-                          <div className="mb-1 w-full min-w-0 truncate text-xs font-bold">
+                        <div
+                          className="flex h-fit min-h-[48px] w-full min-w-0 flex-1 flex-col items-start justify-start border-3 border-cyan-400 bg-cyan-300 p-2"
+                          style={{
+                            boxShadow: '0 3px 0 #0891b2, 0 3px 6px rgba(0,0,0,0.2)',
+                            imageRendering: 'pixelated',
+                          }}
+                        >
+                          <div
+                            className="mb-1 w-full min-w-0 truncate text-xs font-black text-blue-900 uppercase"
+                            style={{ fontFamily: 'monospace' }}
+                          >
                             {cell.title || cell.thought}
                           </div>
                           {cell.tooluse && cell.tooluse.tool_name === 'SearchTool' && (
-                            <div className="border-primary/20 bg-primary/10 mb-1 flex w-full items-center gap-1 truncate rounded-md border p-1 text-xs">
+                            <div
+                              className="mb-1 flex w-full items-center gap-1 truncate border-2 border-yellow-400 bg-yellow-300 p-1 text-xs"
+                              style={{
+                                boxShadow: '0 2px 0 #f59e0b',
+                                fontFamily: 'monospace',
+                              }}
+                            >
                               <Globe className="h-3 w-3" />
-                              <span className="font-medium">Search Tool</span>
+                              <span className="font-bold text-yellow-800">SEARCH TOOL</span>
                             </div>
                           )}
                           {cell.tooluse && cell.tooluse.tool_name === 'ReaderTool' && (
-                            <div className="border-primary/20 bg-primary/10 mb-1 flex w-full items-center gap-1 truncate rounded-md border p-1 text-xs">
+                            <div
+                              className="mb-1 flex w-full items-center gap-1 truncate border-2 border-green-400 bg-green-300 p-1 text-xs"
+                              style={{
+                                boxShadow: '0 2px 0 #16a34a',
+                                fontFamily: 'monospace',
+                              }}
+                            >
                               <BookOpenCheck className="h-3 w-3" />
-                              <span className="font-medium">Webpage Understanding</span>
+                              <span className="font-bold text-green-800">READER TOOL</span>
                             </div>
                           )}
                           {cell.tooluse &&
                             !!cell.tooluse.tool_name &&
                             cell.tooluse.tool_name !== 'SearchTool' &&
                             cell.tooluse.tool_name !== 'ReaderTool' && (
-                              <div className="border-primary/20 bg-primary/10 mb-1 flex w-full items-center gap-1 truncate rounded-md border p-1 text-xs">
+                              <div
+                                className="mb-1 flex w-full items-center gap-1 truncate border-2 border-purple-400 bg-purple-300 p-1 text-xs"
+                                style={{
+                                  boxShadow: '0 2px 0 #9333ea',
+                                  fontFamily: 'monospace',
+                                }}
+                              >
                                 <Drill className="h-3 w-3" />
-                                <span className="font-medium">{cell.tooluse.tool_name}</span>
+                                <span className="font-bold text-purple-800 uppercase">
+                                  {cell.tooluse.tool_name}
+                                </span>
                               </div>
                             )}
                           <div
                             className={cn(
-                              'w-full min-w-0 items-center gap-1 truncate text-xs font-medium',
+                              'w-full min-w-0 items-center gap-1 truncate text-xs font-black',
                               !cell.conclusion && 'flex', // This makes the truncate text work right
                             )}
+                            style={{ fontFamily: 'monospace' }}
                           >
                             {cell.conclusion ? (
-                              <span className="animate-in fade-in slide-in-from-left-4 duration-200">
-                                {cell.conclusion}
-                              </span>
+                              <div
+                                className="animate-in fade-in slide-in-from-left-4 border border-white bg-white px-2 py-1 text-blue-900 duration-200"
+                                style={{
+                                  boxShadow: '0 1px 0 #1e40af',
+                                }}
+                              >
+                                ✓ COMPLETE
+                              </div>
                             ) : (
                               <>
                                 {!cell.conclusion && !cell.tooluse?.tool_result ? (
-                                  <span>
-                                    <Loader2 className="h-3 w-3 animate-spin text-gray-500" />
-                                  </span>
+                                  <div
+                                    className="flex items-center gap-1 border border-orange-400 bg-orange-300 px-2 py-1 text-orange-900"
+                                    style={{
+                                      boxShadow: '0 1px 0 #ea580c',
+                                    }}
+                                  >
+                                    <Loader2 className="h-3 w-3 animate-spin" />
+                                    <span>PROCESSING...</span>
+                                  </div>
                                 ) : (
-                                  <span className="animate-in fade-in slide-in-from-left-4 duration-200">
-                                    ✓
-                                  </span>
+                                  <div
+                                    className="animate-in fade-in slide-in-from-left-4 border border-white bg-white px-2 py-1 text-green-800 duration-200"
+                                    style={{
+                                      boxShadow: '0 1px 0 #15803d',
+                                    }}
+                                  >
+                                    ✓ DONE
+                                  </div>
                                 )}
                               </>
                             )}
@@ -340,16 +386,19 @@ export const TreeView = ({ output }: { output: any }) => {
                     <div key={cellKey} className="grid h-full w-full grid-cols-2">
                       <div
                         className={cn(
-                          'h-full w-full border-gray-600',
-                          cell.left && 'border-b-2',
-                          cell.up && 'border-r-2',
+                          'h-full w-full border-yellow-400',
+                          cell.left && 'border-b-4',
+                          cell.up && 'border-r-4',
                         )}
                       ></div>
                       <div
-                        className={cn('h-full w-full border-gray-600', cell.right && 'border-b-2')}
+                        className={cn(
+                          'h-full w-full border-yellow-400',
+                          cell.right && 'border-b-4',
+                        )}
                       ></div>
                       <div
-                        className={cn('h-full w-full border-gray-600', cell.down && 'border-r-2')}
+                        className={cn('h-full w-full border-yellow-400', cell.down && 'border-r-4')}
                       ></div>
                       <div className="h-full w-full"></div>
                     </div>

@@ -10,8 +10,8 @@ const manrope = Manrope({
 });
 
 export const metadata: Metadata = {
-  title: 'Academic Research Agent ',
-  description: 'Powered by Subconscious.dev',
+  title: 'Arxiv GigaResearch',
+  description: 'Is your paper novel? We wanted to know. Powered by Subconscious.dev',
 };
 
 export default function RootLayout({
