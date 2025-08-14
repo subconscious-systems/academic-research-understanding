@@ -41,10 +41,12 @@ export const updatePaperAnalysisStatus = internalMutation({
   args: {
     id: v.id('paperAnalyses'),
     status: v.string(),
+    response: v.optional(v.any()),
   },
   handler: async (ctx, args) => {
     await ctx.db.patch(args.id, {
       status: args.status,
+      response: args.response,
       updatedAt: Date.now(),
     });
   },

@@ -36,6 +36,7 @@ export default function Home() {
       setIsLoading(false);
     } catch (error) {
       console.error('Error creating paper analysis:', error);
+      setShowReport(true);
       setIsLoading(false);
     }
   };
