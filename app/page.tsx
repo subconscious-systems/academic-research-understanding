@@ -4,6 +4,8 @@ import { useState } from 'react';
 import { useMutation, useQuery } from 'convex/react';
 import { api } from '../convex/_generated/api';
 import { Id } from '../convex/_generated/dataModel';
+import { TreeView } from '@/components/ui/tree/TreeView';
+import { parse } from 'partial-json';
 
 export default function Home() {
   const [paperInput, setPaperInput] = useState('');
@@ -101,85 +103,107 @@ export default function Home() {
             </form>
           </div>
         ) : (
-          /* Report Display */
-          <div className="w-full max-w-4xl">
-            <div className="rounded-2xl border border-gray-200 bg-white p-8 shadow-xl">
-              <div className="mb-6">
-                <button
-                  onClick={() => {
-                    setShowReport(false);
-                    setPaperInput('');
-                    setAnalysisId(null);
-                  }}
-                  className="mb-4 flex items-center space-x-2 font-medium text-blue-600 hover:text-blue-800"
-                >
-                  <svg className="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path
-                      strokeLinecap="round"
-                      strokeLinejoin="round"
-                      strokeWidth={2}
-                      d="M10 19l-7-7m0 0l7-7m-7 7h18"
-                    />
-                  </svg>
-                  <span>Analyze another paper</span>
-                </button>
-
-                {/* Paper URL Display */}
-                <div className="mb-4 rounded-lg bg-gray-50 p-4">
-                  <h3 className="mb-2 text-sm font-semibold text-gray-700">Paper URL:</h3>
-                  <a
-                    href={paperInput}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="break-all text-blue-600 underline hover:text-blue-800"
+          /* Report Display - Full Screen */
+          <div className="fixed inset-0 flex flex-col bg-white p-6">
+            <div className="flex h-full max-w-none flex-col">
+              {/* Full Screen Header */}
+              <div className="mb-2 border-b border-gray-200 pb-6">
+                <div className="flex items-center justify-between">
+                  {/* Back Button - Small Arrow */}
+                  <button
+                    onClick={() => {
+                      setShowReport(false);
+                      setPaperInput('');
+                      setAnalysisId(null);
+                    }}
+                    className="flex h-10 w-10 items-center justify-center rounded-full bg-gray-100 text-gray-700 transition-colors hover:bg-gray-200"
+                    title="Back to Start"
                   >
-                    {paperInput}
-                  </a>
-                </div>
+                    <svg className="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                        strokeWidth={2}
+                        d="M10 19l-7-7m0 0l7-7m-7 7h18"
+                      />
+                    </svg>
+                  </button>
 
-                {/* Status Display */}
-                <div className="mb-6">
-                  <div className="flex items-center space-x-3">
-                    <span className="text-sm font-semibold text-gray-700">Status:</span>
-                    {paperAnalysis ? (
+                  {/* Center Section - Token Count (Emphasized), Paper, Status */}
+                  <div className="flex flex-col items-center space-y-3">
+                    {/* Token Count - Emphasized */}
+                    <div className="flex items-center space-x-3 rounded-lg border border-blue-200 bg-blue-50 px-6 py-3">
+                      <span className="text-lg font-semibold text-blue-700">Tokens Reviewed:</span>
+                      <span className="font-mono text-2xl font-bold text-blue-900">
+                        {paperAnalysis?.tokensRead
+                          ? paperAnalysis.tokensRead.toLocaleString()
+                          : '0'}
+                      </span>
+                    </div>
+
+                    {/* Paper Link and Status Row */}
+                    <div className="flex items-center space-x-8">
+                      {/* Paper Link */}
                       <div className="flex items-center space-x-2">
-                        {paperAnalysis.status === 'pending' && (
-                          <>
-                            <div className="h-3 w-3 animate-pulse rounded-full bg-yellow-500"></div>
-                            <span className="font-medium text-yellow-600">Pending</span>
-                          </>
-                        )}
-                        {paperAnalysis.status === 'processing' && (
-                          <>
-                            <div className="h-3 w-3 animate-spin rounded-full border-b-2 border-blue-600"></div>
-                            <span className="font-medium text-blue-600">Processing</span>
-                          </>
-                        )}
-                        {paperAnalysis.status === 'completed' && (
-                          <>
-                            <div className="h-3 w-3 rounded-full bg-green-500"></div>
-                            <span className="font-medium text-green-600">Completed</span>
-                          </>
-                        )}
-                        {paperAnalysis.status === 'failed' && (
-                          <>
-                            <div className="h-3 w-3 rounded-full bg-red-500"></div>
-                            <span className="font-medium text-red-600">Failed</span>
-                          </>
+                        <span className="text-sm font-medium text-gray-500">Paper:</span>
+                        <a
+                          href={paperInput}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="max-w-md truncate text-blue-600 underline hover:text-blue-800"
+                          title={paperInput}
+                        >
+                          {paperInput}
+                        </a>
+                      </div>
+
+                      {/* Status */}
+                      <div className="flex items-center space-x-2">
+                        <span className="text-sm font-medium text-gray-500">Status:</span>
+                        {paperAnalysis ? (
+                          <div className="flex items-center space-x-2">
+                            {paperAnalysis.status === 'pending' && (
+                              <>
+                                <div className="h-3 w-3 animate-pulse rounded-full bg-yellow-500"></div>
+                                <span className="font-medium text-yellow-600">Pending</span>
+                              </>
+                            )}
+                            {paperAnalysis.status === 'processing' && (
+                              <>
+                                <div className="h-3 w-3 animate-spin rounded-full border-b-2 border-blue-600"></div>
+                                <span className="font-medium text-blue-600">Processing</span>
+                              </>
+                            )}
+                            {paperAnalysis.status === 'completed' && (
+                              <>
+                                <div className="h-3 w-3 rounded-full bg-green-500"></div>
+                                <span className="font-medium text-green-600">Completed</span>
+                              </>
+                            )}
+                            {paperAnalysis.status === 'failed' && (
+                              <>
+                                <div className="h-3 w-3 rounded-full bg-red-500"></div>
+                                <span className="font-medium text-red-600">Failed</span>
+                              </>
+                            )}
+                          </div>
+                        ) : (
+                          <span className="text-gray-500">Loading...</span>
                         )}
                       </div>
-                    ) : (
-                      <span className="text-gray-500">Loading...</span>
-                    )}
+                    </div>
                   </div>
+
+                  {/* Right Side Spacer */}
+                  <div className="w-10"></div>
                 </div>
               </div>
 
-              {/* Content based on status */}
+              {/* Streaming Output Section */}
               {paperAnalysis?.response ? (
-                <div className="space-y-6">
-                  <div className="flex items-center justify-between">
-                    <h2 className="text-2xl font-bold text-gray-900">
+                <div className="flex min-h-0 flex-1 flex-col">
+                  <div className="mb-2 flex flex-shrink-0 items-center justify-between">
+                    <h2 className="text-xl font-bold text-gray-900">
                       {paperAnalysis.status === 'completed'
                         ? 'Analysis Complete'
                         : 'Analysis in Progress'}
@@ -187,56 +211,53 @@ export default function Home() {
                     {paperAnalysis.status === 'processing' &&
                       paperAnalysis.response?.isStreaming && (
                         <div className="flex items-center space-x-2 text-blue-600">
-                          <div className="h-2 w-2 animate-pulse rounded-full bg-blue-600"></div>
-                          <span className="text-sm font-medium">Streaming...</span>
+                          <div className="h-3 w-3 animate-pulse rounded-full bg-blue-600"></div>
+                          <span className="text-lg font-medium">Streaming...</span>
                         </div>
                       )}
                   </div>
 
-                  <div className="rounded-lg bg-gray-50 p-6">
-                    <h3 className="mb-3 text-lg font-semibold text-gray-900">
-                      {paperAnalysis.status === 'completed'
-                        ? 'Final Response:'
-                        : 'Response (Live):'}
-                    </h3>
-                    <div className="max-h-96 overflow-auto rounded border bg-white p-4">
-                      {paperAnalysis.response?.isStreaming ? (
-                        // Show streaming content as plain text
-                        <div className="text-sm whitespace-pre-wrap text-gray-700">
-                          {paperAnalysis.response.content}
-                          {paperAnalysis.status === 'processing' && (
-                            <span className="ml-1 inline-block h-5 w-2 animate-pulse bg-blue-500"></span>
-                          )}
+                  {/* Scrollable Stream Output */}
+                  <div className="flex-1 overflow-auto rounded-lg border-2 border-gray-200 bg-gray-50 p-6">
+                    {paperAnalysis.response.isStreaming ? (
+                      // Show streaming content as plain text
+                      <div className="font-mono text-base leading-relaxed whitespace-pre-wrap text-gray-800">
+                        <TreeView output={parse(paperAnalysis.response.content)} />
+                      </div>
+                    ) : (
+                      // Show final formatted response
+                      <div className="space-y-6">
+                        <div className="rounded-lg bg-white p-6 shadow-sm">
+                          <h3 className="mb-4 text-xl font-semibold text-gray-900">Summary:</h3>
+                          <div className="text-base leading-relaxed whitespace-pre-wrap text-gray-800">
+                            {paperAnalysis.answer}
+                          </div>
                         </div>
-                      ) : (
-                        // Show final formatted JSON
-                        <div>
-                          <h3 className="mb-3 text-lg font-semibold text-gray-900">Summary:</h3>
-                          <p className="text-sm whitespace-pre-wrap text-gray-700">
-                            {paperAnalysis.response.answer}
-                          </p>
-                          <h3 className="mb-3 text-lg font-semibold text-gray-900">
-                            Raw Response:
-                          </h3>
-                          <pre className="text-sm whitespace-pre-wrap text-gray-700">
-                            {JSON.stringify(paperAnalysis.response, null, 2)}
+                        <details className="rounded-lg bg-white p-6 shadow-sm">
+                          <summary className="cursor-pointer text-xl font-semibold text-gray-900 hover:text-blue-600">
+                            Raw Response (Click to expand)
+                          </summary>
+                          <pre className="mt-4 overflow-auto text-sm whitespace-pre-wrap text-gray-700">
+                            {JSON.stringify(paperAnalysis.response)}
                           </pre>
-                        </div>
-                      )}
-                    </div>
+                        </details>
+                      </div>
+                    )}
                   </div>
                 </div>
               ) : (
-                <div className="py-8 text-center">
-                  <div className="mb-4">
-                    <div className="mx-auto h-8 w-8 animate-spin rounded-full border-b-2 border-blue-600"></div>
+                <div className="flex flex-1 items-center justify-center">
+                  <div className="text-center">
+                    <div className="mb-4">
+                      <div className="mx-auto h-12 w-12 animate-spin rounded-full border-b-2 border-blue-600"></div>
+                    </div>
+                    <p className="text-lg text-gray-600">
+                      {paperAnalysis?.status === 'pending' && 'Waiting to start processing...'}
+                      {paperAnalysis?.status === 'processing' && 'AI is starting analysis...'}
+                      {paperAnalysis?.status === 'failed' && 'Analysis failed. Please try again.'}
+                      {!paperAnalysis && 'Loading analysis...'}
+                    </p>
                   </div>
-                  <p className="text-gray-600">
-                    {paperAnalysis?.status === 'pending' && 'Waiting to start processing...'}
-                    {paperAnalysis?.status === 'processing' && 'AI is starting analysis...'}
-                    {paperAnalysis?.status === 'failed' && 'Analysis failed. Please try again.'}
-                    {!paperAnalysis && 'Loading analysis...'}
-                  </p>
                 </div>
               )}
             </div>
@@ -244,19 +265,21 @@ export default function Home() {
         )}
       </div>
 
-      {/* Footer */}
-      <footer className="px-4 py-6">
-        <div className="text-center">
-          <a
-            className="text-gray-500 transition-colors duration-200 hover:text-gray-700"
-            href="https://subconscious.dev"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            Powered by Subconscious
-          </a>
-        </div>
-      </footer>
+      {/* Footer - Only show when not in report mode */}
+      {!showReport && (
+        <footer className="px-4 py-6">
+          <div className="text-center">
+            <a
+              className="text-gray-500 transition-colors duration-200 hover:text-gray-700"
+              href="https://subconscious.dev"
+              target="_blank"
+              rel="noopener noreferrer"
+            >
+              Powered by Subconscious
+            </a>
+          </div>
+        </footer>
+      )}
     </div>
   );
 }

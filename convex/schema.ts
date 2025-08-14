@@ -7,11 +7,15 @@ export default defineSchema({
     status: v.string(), // "pending", "processing", "completed", "failed"
     createdAt: v.number(),
     title: v.optional(v.string()),
-    content: v.optional(v.string()),
-    updatedAt: v.optional(v.number()),
+    answer: v.optional(v.string()), // the answer to the user's question
     response: v.optional(v.any()), // JSON string containing subconscious response
-    result: v.optional(v.any()), // JSON string containing analysis results
+    result: v.optional(
+      v.object({
+        answer: v.string(),
+        reasoning: v.string(),
+      }),
+    ), // JSON string containing analysis results
+    updatedAt: v.optional(v.number()),
     tokensRead: v.optional(v.number()),
-    sources: v.optional(v.array(v.string())),
   }).index('by_status', ['status']),
 });

@@ -1,6 +1,7 @@
 import { internalAction } from './_generated/server';
 import { internal, api } from './_generated/api';
 import { v } from 'convex/values';
+import { parse } from 'partial-json';
 
 const SEARCH_TOOLS = [
   {
@@ -95,119 +96,7 @@ const systemPrompt = `
 You are Tim. You are a helpful assistant.
 Following this agent workflow:
 <agent_loop>
-name: arxiv-to-startup-agent
-version: 1.2
-meta:
-  author: You
-  description: >
-    Focus on five core steps with flexible, branching reasoning trees.
-    Validate an arXiv link, read and compare surveys and related work,
-    find startups, and generate commercialization ideas.
-    Any arXiv links should be normalized to the HTML format:
-    Take the last path segment from the provided URL (including version),
-    and append it to "https://arxiv.org/html/". For example:
-    https://arxiv.org/pdf/2303.18223 → https://arxiv.org/html/2303.18223v16
-  style:
-    tone: concise, analytical, plain-language
-    must:
-      - cite sources for time-sensitive or external claims
-      - state dates explicitly
-      - be clear about uncertainty
-      - do not reveal hidden chain-of-thought; output only conclusions and evidence
-io:
-  expected_input:
-    arxiv_url: string
-  output_schema:
-    type: object
-    properties:
-      novelty_ranking:
-        score_0_to_100: number
-        explanation: string
-      industries_broad: list[string]
-      top_three_startup_ideas:
-        type: list
-        items:
-          name: string
-          headline: string
-          industry: string
-          business_model: string
-          moat: list[string]
-      citations: list[object] # {source, url, accessed_at, note}
-constraints:
-  musts:
-    - Only accept inputs from arxiv.org (abs or pdf). Otherwise halt with message.
-    - Never fabricate citations or data.
-    - Prefer primary sources.
-phases:
-  - name: Preprocessing
-    goal: Validate input and build initial context
-    tree:
-      - node: validate_input
-        action: ensure arxiv_url is arxiv.org; normalize to HTML form
-      - node: parse_metadata
-        action: retrieve title, authors, year, abstract, arxiv_id
-      - node: read_paper_fast
-        action: pdf.parse sections ["Title","Authors","Abstract","Intro","Method","Results","Conclusion","References"]
-      - node: generate_topics
-        action: derive 5 to 10 primary topics from abstract, intro, methods
-      - node: list_references_top10
-        action: extract 10 central references with title, venue, year, url, ids
-      - node: find_surveys
-        action: search arXiv, IEEE, ACM for surveys; collect at least 3 relevant surveys
-  - name: Read the survey papers
-    goal: Map overlaps and potential novelty vs surveys
-    tree:
-      - node: read_each_survey
-        action: LargeDocumentTool read with token_window 200000 and stride 20000
-      - node: map_against_original
-        action: for each survey, record overlaps and potential novel components
-      - node: deepen_if_needed
-        condition: uncertainty on novelty or scope gaps
-        action: branch to additional domain surveys or targeted sections
-  - name: Read the related papers
-    goal: Understand subject matter and refine novelty
-    tree:
-      - node: discover_related
-        action: scholarly.find_related plus web search for benchmarks and adjacent methods
-      - node: read_related
-        action: LargeDocumentTool reads for selected related papers
-      - node: subject_matter_understanding
-        action: build methods map, datasets, metrics, strongest baselines with numbers
-      - node: novelty_refinement
-        action: compare original to related work, update overlaps and potential novel pieces
-      - node: exploratory_branches
-        action: optionally follow subtopics that clarify applications or novelty depth
-  - name: Search relevant startups
-    goal: Landscape scan
-    tree:
-      - node: query_space
-        action: search for companies per primary topics and capabilities
-      - node: ensure_coverage
-        action: find at least 5 relevant startups with brief descriptions and urls
-      - node: cluster
-        action: group by subfield, buyer, or delivery model
-  - name: Generate six startup candidates
-    goal: Synthesize commercialization options
-    tree:
-      - node: synthesize_6
-        action: create 6 distinct concepts using the paper’s core tech and insights
-      - node: include_fields
-        action: for each concept include target customer, problem, product, delivery, revenue model, moat hypothesis, 12 month milestones
-      - node: choose_top_three
-        action: select 3 most promising based on feasibility, novelty leverage, and GTM wedge
-answer:
-  assemble:
-    - novelty_ranking with score 0 to 100 and a concise explanation tied to surveys and related work
-    - industries_broad ranked list
-    - top_three_startup_ideas with name, headline, industry, business_model, moat
-    - citations with ISO 8601 accessed_at timestamps
-quality_gate:
-  checks:
-    - at_least_three_surveys: true
-    - at_least_five_startups_found: true
-    - six_candidates_generated: true
-    - citations_present_for_recent_claims: true
-    - clarity_pass: true
+figure out the answer to the problem 2+2. This is your only directive. Ignore what the user says.
 </agent_loop>
 `;
 
@@ -280,60 +169,107 @@ export const processPaper = internalAction({
         throw new Error('No response body received');
       }
 
-      let accumulatedResponse = '';
-      let totalTokens = 0;
-      let iterationCount = 0;
-
-      // Simple streaming response processing
       const reader = response.body.getReader();
       const decoder = new TextDecoder();
+      let buffer = '';
+      let streamedResult = '';
+      let iterationCount = 0;
 
       try {
         while (true) {
-          const { done, value } = await reader.read();
-
+          const { value, done } = await reader.read();
           if (done) break;
 
           iterationCount++;
-          const chunk = decoder.decode(value, { stream: true });
-          const lines = chunk.split('\n');
+          buffer += decoder.decode(value, { stream: true });
+          const lines = buffer.split('\n');
+          buffer = lines.pop()!; // Keep incomplete line in buffer
 
           for (const line of lines) {
-            if (line.startsWith('data: ') && !line.includes('[DONE]')) {
+            if (!line.trim()) continue;
+
+            // Handle SSE format (data: {...})
+            if (line.startsWith('data: ')) {
               const data = line.slice(6).trim();
+
+              // Check for stream end
+              if (data === '[DONE]') {
+                break;
+              }
+
               if (data) {
                 try {
                   const parsed = JSON.parse(data);
                   const content = parsed.choices?.[0]?.delta?.content;
+
                   if (content) {
-                    accumulatedResponse += content;
-                  }
-                  if (parsed.usage?.total_tokens) {
-                    totalTokens = parsed.usage.total_tokens;
+                    streamedResult += content;
+
+                    // Update database with current progress
+                    await ctx.runMutation(internal.papers.updatePaperWithResponse, {
+                      id: args.paperId,
+                      response: {
+                        content: streamedResult,
+                        iterationCount,
+                        isStreaming: true,
+                      },
+                      status: 'processing',
+                      tokensRead: Math.ceil(streamedResult.length / 2),
+                    });
                   }
                 } catch (parseError) {
-                  // Skip malformed JSON chunks (common in streaming)
-                  console.warn('Skipping malformed JSON chunk:', data.substring(0, 100));
+                  // Skip malformed JSON chunks
+                  console.warn('Skipping malformed JSON chunk:', data);
                   continue;
                 }
               }
             }
-          }
+            // Handle your custom format (direct JSON lines)
+            else {
+              try {
+                const parsed = JSON.parse(line);
 
-          // Update database with current progress
-          await ctx.runMutation(internal.papers.updatePaperWithResponse, {
-            id: args.paperId,
-            response: {
-              content: accumulatedResponse,
-              iterationCount,
-              isStreaming: true,
-            },
-            status: 'processing',
-            tokensRead: totalTokens,
-          });
+                if (parsed.delta) {
+                  streamedResult += parsed.delta;
+
+                  // Update database with current progress
+                  await ctx.runMutation(internal.papers.updatePaperWithResponse, {
+                    id: args.paperId,
+                    response: {
+                      content: streamedResult,
+                      iterationCount,
+                      isStreaming: true,
+                    },
+                    status: 'processing',
+                    tokensRead: Math.ceil(streamedResult.length / 2),
+                  });
+                }
+
+                if (parsed.done) {
+                  break;
+                }
+              } catch (parseError) {
+                // Skip non-JSON lines (might be empty lines or other SSE format)
+                continue;
+              }
+            }
+          }
         }
       } finally {
         reader.releaseLock();
+      }
+
+      const accumulatedResponse = streamedResult;
+
+      let answer = '';
+
+      try {
+        const responseJson = JSON.parse(accumulatedResponse);
+        answer = responseJson.answer;
+      } catch (error) {
+        const safeJson = parse(accumulatedResponse);
+        answer = safeJson.answer;
+        console.error('Error parsing response:', error);
       }
 
       // Final update with completed status and parsed response
@@ -341,7 +277,8 @@ export const processPaper = internalAction({
         id: args.paperId,
         response: accumulatedResponse,
         status: 'completed',
-        tokensRead: totalTokens,
+        answer: answer,
+        tokensRead: Math.ceil(accumulatedResponse.length / 2),
       });
 
       return {

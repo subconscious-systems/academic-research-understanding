@@ -59,12 +59,14 @@ export const updatePaperWithResponse = internalMutation({
     response: v.any(),
     status: v.string(),
     tokensRead: v.optional(v.number()),
+    answer: v.optional(v.string()),
   },
   handler: async (ctx, args) => {
     await ctx.db.patch(args.id, {
       response: args.response,
       status: args.status,
       tokensRead: args.tokensRead,
+      answer: args.answer,
       updatedAt: Date.now(),
     });
   },

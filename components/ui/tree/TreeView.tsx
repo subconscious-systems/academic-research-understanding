@@ -1,10 +1,29 @@
+/* eslint-disable @typescript-eslint/no-explicit-any */
 'use client';
 
 import { cn } from '@/lib/utils';
 import React from 'react';
 import { BookOpenCheck, Drill, Globe, Loader2 } from 'lucide-react';
-import { Task } from '../../app/(signedIn)/playground/_types';
 import { TaskNodeTooltip } from './TaskNodeTooltip';
+
+export interface ModelResponse {
+  reasoning: Task[];
+  answer: string;
+}
+
+export interface Task {
+  thought?: string;
+  title?: string;
+  tooluse?: ToolCall;
+  subtasks?: Task[];
+  conclusion?: string;
+}
+
+export interface ToolCall {
+  parameters: any;
+  tool_name: string;
+  tool_result: any;
+}
 
 const outputToArray = (reasoningTasks: Task[]) => {
   // Helper to calculate the maximum depth of reasoning tasks
@@ -236,19 +255,19 @@ export const TreeView = ({ output }: { output: any }) => {
                 if (cell.thought !== undefined) {
                   return (
                     <TaskNodeTooltip key={cellKey} cell={cell} cellKey={cellKey}>
-                      <div className="flex h-full w-full min-w-0 cursor-default items-center justify-center py-2 duration-200 animate-in fade-in slide-in-from-left-4">
-                        <div className="flex h-fit min-h-[48px] w-full min-w-0 flex-1 flex-col items-start justify-start rounded-md border border-primary/20 bg-primary/5 p-2">
+                      <div className="animate-in fade-in slide-in-from-left-4 flex h-full w-full min-w-0 cursor-default items-center justify-center py-2 duration-200">
+                        <div className="border-primary/20 bg-primary/5 flex h-fit min-h-[48px] w-full min-w-0 flex-1 flex-col items-start justify-start rounded-md border p-2">
                           <div className="mb-1 w-full min-w-0 truncate text-xs font-bold">
                             {cell.title || cell.thought}
                           </div>
                           {cell.tooluse && cell.tooluse.tool_name === 'SearchTool' && (
-                            <div className="mb-1 flex w-full items-center gap-1 truncate rounded-md border border-primary/20 bg-primary/10 p-1 text-xs">
+                            <div className="border-primary/20 bg-primary/10 mb-1 flex w-full items-center gap-1 truncate rounded-md border p-1 text-xs">
                               <Globe className="h-3 w-3" />
                               <span className="font-medium">Search Tool</span>
                             </div>
                           )}
                           {cell.tooluse && cell.tooluse.tool_name === 'ReaderTool' && (
-                            <div className="mb-1 flex w-full items-center gap-1 truncate rounded-md border border-primary/20 bg-primary/10 p-1 text-xs">
+                            <div className="border-primary/20 bg-primary/10 mb-1 flex w-full items-center gap-1 truncate rounded-md border p-1 text-xs">
                               <BookOpenCheck className="h-3 w-3" />
                               <span className="font-medium">Webpage Understanding</span>
                             </div>
@@ -257,7 +276,7 @@ export const TreeView = ({ output }: { output: any }) => {
                             !!cell.tooluse.tool_name &&
                             cell.tooluse.tool_name !== 'SearchTool' &&
                             cell.tooluse.tool_name !== 'ReaderTool' && (
-                              <div className="mb-1 flex w-full items-center gap-1 truncate rounded-md border border-primary/20 bg-primary/10 p-1 text-xs">
+                              <div className="border-primary/20 bg-primary/10 mb-1 flex w-full items-center gap-1 truncate rounded-md border p-1 text-xs">
                                 <Drill className="h-3 w-3" />
                                 <span className="font-medium">{cell.tooluse.tool_name}</span>
                               </div>
@@ -269,7 +288,7 @@ export const TreeView = ({ output }: { output: any }) => {
                             )}
                           >
                             {cell.conclusion ? (
-                              <span className="duration-200 animate-in fade-in slide-in-from-left-4">
+                              <span className="animate-in fade-in slide-in-from-left-4 duration-200">
                                 {cell.conclusion}
                               </span>
                             ) : (
@@ -279,7 +298,7 @@ export const TreeView = ({ output }: { output: any }) => {
                                     <Loader2 className="h-3 w-3 animate-spin text-gray-500" />
                                   </span>
                                 ) : (
-                                  <span className="duration-200 animate-in fade-in slide-in-from-left-4">
+                                  <span className="animate-in fade-in slide-in-from-left-4 duration-200">
                                     Tool called
                                   </span>
                                 )}
