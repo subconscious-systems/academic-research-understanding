@@ -6,6 +6,7 @@ import { api } from '../convex/_generated/api';
 import { Id } from '../convex/_generated/dataModel';
 import { TreeView } from '@/components/ui/tree/TreeView';
 import { parse } from 'partial-json';
+import { Tooltip, TooltipTrigger, TooltipContent } from '@/components/ui/tooltip';
 
 // Animated Counter Component
 function AnimatedCounter({ value }: { value: number }) {
@@ -181,6 +182,46 @@ export default function Home() {
           </div>
         </div>
       </div>
+
+      {/* Top Right Button - Only show when not in report mode */}
+      {!showReport && (
+        <div className="absolute top-6 right-6 z-20">
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <button
+                className="border-3 border-purple-400 bg-purple-300 px-4 py-2 text-sm font-black text-purple-800 uppercase transition-all duration-200 hover:bg-purple-200"
+                style={{
+                  fontFamily: 'monospace',
+                  textShadow: '1px 1px 0 #9333ea',
+                  boxShadow: '0 3px 0 #9333ea, 0 3px 6px rgba(0,0,0,0.2)',
+                  imageRendering: 'pixelated',
+                }}
+                disabled
+              >
+                GIGARESEARCH SWARM COMING SOON
+              </button>
+            </TooltipTrigger>
+            <TooltipContent
+              side="bottom"
+              className="max-w-xs border-3 border-yellow-400 bg-yellow-300 p-3 font-black text-red-600"
+              style={{
+                fontFamily: 'monospace',
+                textShadow: '1px 1px 0 #dc2626',
+                boxShadow: '0 3px 0 #f59e0b, 0 3px 6px rgba(0,0,0,0.2)',
+                imageRendering: 'pixelated',
+              }}
+            >
+              <div className="text-xs leading-tight uppercase">
+                SPAWN 100S OF AGENTS EXPLORING BILLIONS OF TOKENS TO DISCOVER THE MOST NOVEL
+                RESEARCH OF THE DAY
+                <br />
+                <br />
+                WE'RE WORKING ON IT BUT HIT ALL KINDS OF LIMITS...
+              </div>
+            </TooltipContent>
+          </Tooltip>
+        </div>
+      )}
 
       {/* Hero Section */}
       <div className="relative z-10 flex flex-1 flex-col items-center justify-center px-4 py-12">
