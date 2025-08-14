@@ -20,10 +20,27 @@ export interface Task {
 }
 
 export interface ToolCall {
-  parameters: any;
-  tool_name: string;
-  tool_result: any;
+  parameters?: any;
+  tool_name?: string;
+  tool_result?: any;
 }
+
+// Given a nested ModelResponse, strip out everything except title, tooluse.tool_name, and subtasks
+export const stripOutEverythingExceptTitleToolNameAndSubtasks = (
+  response: ModelResponse,
+): ModelResponse => {
+  const stripTask = (task: Task): Task => ({
+    title: task?.title,
+    tooluse: task.tooluse ? { tool_name: task?.tooluse?.tool_name } : undefined,
+    subtasks: task?.subtasks ? task?.subtasks.map(stripTask) : undefined,
+  });
+
+  const strippedResponse = {
+    reasoning: response?.reasoning?.map(stripTask),
+    answer: response?.answer,
+  };
+  return strippedResponse;
+};
 
 const outputToArray = (reasoningTasks: Task[]) => {
   // Helper to calculate the maximum depth of reasoning tasks

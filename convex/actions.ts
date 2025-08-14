@@ -2,6 +2,7 @@ import { internalAction } from './_generated/server';
 import { internal, api } from './_generated/api';
 import { v } from 'convex/values';
 import { parse } from 'partial-json';
+import { stripOutEverythingExceptTitleToolNameAndSubtasks } from '@/components/ui/tree/TreeView';
 
 const SEARCH_TOOLS = [
   {
@@ -238,6 +239,8 @@ quality_gate:
 </agent_loop>
 `;
 
+// given a nested
+
 export const processPaper = internalAction({
   args: {
     paperId: v.id('paperAnalyses'),
@@ -349,11 +352,14 @@ export const processPaper = internalAction({
                   if (content) {
                     streamedResult += content;
 
+                    const safeJson = parse(streamedResult);
+                    const strippedResponse =
+                      stripOutEverythingExceptTitleToolNameAndSubtasks(safeJson);
                     // Update database with current progress
                     await ctx.runMutation(internal.papers.updatePaperWithResponse, {
                       id: args.paperId,
                       response: {
-                        content: streamedResult,
+                        content: JSON.stringify(strippedResponse),
                         iterationCount,
                         isStreaming: true,
                       },
@@ -377,10 +383,13 @@ export const processPaper = internalAction({
                   streamedResult += parsed.delta;
 
                   // Update database with current progress
+                  const safeJson = parse(streamedResult);
+                  const strippedResponse =
+                    stripOutEverythingExceptTitleToolNameAndSubtasks(safeJson);
                   await ctx.runMutation(internal.papers.updatePaperWithResponse, {
                     id: args.paperId,
                     response: {
-                      content: streamedResult,
+                      content: JSON.stringify(strippedResponse),
                       iterationCount,
                       isStreaming: true,
                     },
@@ -416,10 +425,12 @@ export const processPaper = internalAction({
         console.error('Error parsing response:', error);
       }
 
+      const safeJson = parse(streamedResult);
+      const strippedResponse = stripOutEverythingExceptTitleToolNameAndSubtasks(safeJson);
       // Final update with completed status and parsed response
       await ctx.runMutation(internal.papers.updatePaperWithResponse, {
         id: args.paperId,
-        response: accumulatedResponse,
+        response: JSON.stringify(strippedResponse),
         status: 'completed',
         answer: answer,
         tokensRead: Math.ceil(accumulatedResponse.length / 2),
