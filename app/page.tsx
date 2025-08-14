@@ -216,7 +216,7 @@ export default function Home() {
                 RESEARCH OF THE DAY
                 <br />
                 <br />
-                WE'RE WORKING ON IT BUT HIT ALL KINDS OF LIMITS...
+                WE&apos;RE WORKING ON IT BUT HIT ALL KINDS OF LIMITS...
               </div>
             </TooltipContent>
           </Tooltip>
