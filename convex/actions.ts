@@ -127,7 +127,7 @@ phases:
             goal: read page
               - subnode: read page using the ReaderTool, specifying the page index, then summarize relevant studies you found in this page with their approach and limitations.
               - subnode: compare the input paper with the summary for relevant studies, decide how novel is the input paper and explain the reason
-            end subtask when hasNextPage is false
+            if hasNextPage is true, read the next page with ReaderTool. end subtask when hasNextPage is false
             aggregate the innovations made by the paper compared to existing work mentioned in the survey
           end subtask
         end subtask

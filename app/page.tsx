@@ -192,7 +192,7 @@ export default function Home() {
                       // Clear error when user starts typing
                       if (urlError) setUrlError('');
                     }}
-                    placeholder="ex. https://arxiv.org/abs/1706.03762"
+                    placeholder="ex. https://arxiv.org/html/1706.03762"
                     className={`w-full rounded-xl border-2 px-4 py-4 text-lg transition-all duration-200 outline-none ${
                       urlError
                         ? 'border-red-500 focus:border-red-500 focus:ring-4 focus:ring-red-100'
@@ -225,7 +225,7 @@ export default function Home() {
             <div className="mt-8 text-center">
               <button
                 onClick={() => {
-                  setPaperInput('https://arxiv.org/abs/2507.16784');
+                  setPaperInput('https://arxiv.org/html/2507.16784');
                   // Clear any previous errors
                   setUrlError('');
                 }}
