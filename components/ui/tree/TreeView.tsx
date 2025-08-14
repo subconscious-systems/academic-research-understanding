@@ -99,7 +99,7 @@ const outputToArray = (reasoningTasks: Task[]) => {
     }
     // Non-leaf node
     let childRows: any[][] = [];
-    validSubtasks.forEach((child: any, i: number) => {
+    validSubtasks.forEach((child: any) => {
       const childSubRows = buildRows(child, depth + 1);
       childRows = childRows.concat(childSubRows);
     });
@@ -211,7 +211,7 @@ export const TreeView = ({ output }: { output: any }) => {
 
   if (!result) return null;
 
-  const { grid, totalColumns, numNodeColumns } = result;
+  const { grid, totalColumns } = result;
 
   // Generate dynamic grid template columns
   const generateGridTemplate = (columns: number) => {

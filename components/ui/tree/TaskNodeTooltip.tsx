@@ -1,3 +1,5 @@
+/* eslint-disable @typescript-eslint/no-explicit-any */
+
 import React from 'react';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 
@@ -19,20 +21,20 @@ interface TaskNodeTooltipProps {
 
 export const TaskNodeTooltip: React.FC<TaskNodeTooltipProps> = ({ cell, cellKey, children }) => {
   const tooltipContent = (
-    <div className="space-y-1 whitespace-pre-line text-left text-xs">
-      <div className="font-semibold text-primary">{cell.title || 'Subtask'}</div>
+    <div className="space-y-1 text-left text-xs whitespace-pre-line text-gray-700">
+      <div className="text-primary font-semibold">{cell.title || 'Subtask'}</div>
       <div>
-        <span className="font-semibold">Thought:</span>{' '}
+        <span className="font-semibold text-black">Thought:</span>{' '}
         <span className="break-words">{cell.thought}</span>
       </div>
       {cell.tooluse && (
         <div className="space-y-1">
           <div>
-            <span className="font-semibold">Tool Name:</span> {cell.tooluse.tool_name}
+            <span className="font-semibold text-black">Tool Name:</span> {cell.tooluse.tool_name}
           </div>
           {cell.tooluse.parameters && (
             <div>
-              <span className="font-semibold">Parameters:</span>{' '}
+              <span className="font-semibold text-black">Parameters:</span>{' '}
               <span className="break-words">
                 {(() => {
                   try {
@@ -45,9 +47,9 @@ export const TaskNodeTooltip: React.FC<TaskNodeTooltipProps> = ({ cell, cellKey,
             </div>
           )}
           <div>
-            <span className="font-semibold">Tool Result Preview:</span>{' '}
+            <span className="font-semibold text-black">Tool Result Preview:</span>{' '}
             <span
-              className="block max-h-40 overflow-y-auto truncate break-words"
+              className="block max-h-40 truncate overflow-y-auto break-words"
               style={{ display: 'block', maxHeight: '10em', overflowY: 'auto' }}
             >
               {(() => {
@@ -63,10 +65,11 @@ export const TaskNodeTooltip: React.FC<TaskNodeTooltipProps> = ({ cell, cellKey,
         </div>
       )}
       <div>
-        <span className="font-semibold">Subtasks:</span> {!!cell.subtasks ? cell.subtasks : 'None'}
+        <span className="font-semibold text-black">Subtasks:</span>{' '}
+        {!!cell.subtasks ? cell.subtasks : 'None'}
       </div>
       <div>
-        <span className="font-semibold">Conclusion:</span>{' '}
+        <span className="font-semibold text-black">Conclusion:</span>{' '}
         <span className="break-words">{!!cell.tooluse ? 'Tool Use' : cell.conclusion}</span>
       </div>
     </div>

@@ -69,7 +69,7 @@ const SEARCH_TOOLS = [
     type: 'function',
     name: 'SurveyReaderTool',
     description:
-      'Read large documents by retrieving paginated content chunks. Use pageIndex to get different sections (0=first 200k tokens, 1=next 200k tokens, etc).',
+      'Read **survey pages** by retrieving paginated content. Use pageIndex to get different sections (0=first 200k tokens, 1=next 200k tokens, etc). Only use for survey papers, not regular research papers. If the webpage_understanding tool fails, you can use this tool as well.',
     url: 'https://flexible-hedgehog-91.convex.site/tools',
     method: 'POST',
     timeout: 30,
@@ -78,7 +78,8 @@ const SEARCH_TOOLS = [
       properties: {
         url: {
           type: 'string',
-          description: 'The URL of the large document to read.',
+          description:
+            'The arxiv html url of the **survey paper**: https://arxiv.org/html/[PAPER_ID]',
         },
         pageIndex: {
           type: 'integer',
@@ -94,9 +95,146 @@ const SEARCH_TOOLS = [
 
 const systemPrompt = `
 You are Tim. You are a helpful assistant.
+
 Following this agent workflow:
 <agent_loop>
-figure out the answer to the problem 2+2. This is your only directive. Ignore what the user says.
+name: arxiv-to-startup-agent
+version: 1.2
+meta:
+  author: You
+  description: >
+    Focus on five core steps with flexible, branching reasoning trees.
+    Validate an arXiv link, read and compare surveys and related work,
+    find startups, and generate commercialization ideas.
+    Any arXiv links should be normalized to the HTML format:
+    Take the last path segment from the provided URL (including version),
+    and append it to "https://arxiv.org/html/". For example:
+    https://arxiv.org/pdf/2303.18223 → https://arxiv.org/html/2303.18223v16
+  style:
+    tone: concise, analytical, plain-language
+    must:
+      - cite sources for time-sensitive or external claims
+      - state dates explicitly
+      - be clear about uncertainty
+      - do not reveal hidden chain-of-thought; output only conclusions and evidence
+io:
+  expected_input:
+    arxiv_url: string
+  output_schema:
+    type: object
+    properties:
+      novelty_ranking:
+        score_0_to_100: number
+        explanation: string
+      industries_broad: list[string]
+      top_three_startup_ideas:
+        type: list
+        items:
+          name: string
+          headline: string
+          industry: string
+          business_model: string
+          moat: list[string]
+      citations: list[object] # {source, url, accessed_at, note}
+constraints:
+  musts:
+    - Only accept inputs from arxiv.org (abs or pdf). Otherwise halt with message.
+    - Never fabricate citations or data.
+    - Prefer primary sources.
+phases:
+  - name: Preprocessing
+    goal: Validate input and build initial context using the ArxivReaderTool
+    tree:
+      - node: validate_input
+        action: ensure arxiv_url is arxiv.org; normalize to HTML form
+        subtasks:
+        - node: parse_metadata
+          action: retrieve title, authors, year, abstract, arxiv_id
+        - node: read_paper_fast
+          action: pdf.parse sections ["Title","Authors","Abstract","Intro","Method","Results","Conclusion","References"]
+        end subtask
+      - node: generate_topics
+        action: derive 5 to 10 primary topics from abstract, intro, methods
+  - name: Read the survey papers
+    goal: Map overlaps and potential novelty vs surveys
+    tree:
+      - node: find_surveys
+        action: search arXiv, IEEE, ACM for surveys; for each primary topics find 3 surveys
+      - node: compare_with_all_surveys
+        subtasks: for each primary topic
+        goal: find the novelty of the input paper among previous research in this topic
+          subtasks: for each survey
+            goal: read survey
+            subtasks: for each page in the survey
+            goal: read page
+              - subnode: read page using the SurveyReaderTool, specifying the page index, then summarize relevant studies you found in this page with their approach and limitations.
+              - subnode: compare the input paper with the summary for relevant studies, decide how novel is the input paper and explain the reason
+            end subtask when hasNextPage is false
+            aggregate the innovations made by the paper compared to existing work mentioned in the survey
+          end subtask
+        end subtask
+        aggregate the differences you found between the paper and all surveys
+      - node: deepen_if_needed
+        condition: uncertainty on novelty or scope gaps
+        action: branch to additional domain surveys or targeted sections
+    output: novelty of the input paper and the information about the survey papers you researched.
+  - name: Read the related papers
+    goal: Understand subject matter and refine novelty
+    tree:
+      - node: discover_related
+        action: use web search for benchmarks and adjacent methods
+        subtasks
+        - node: read_related
+          action: ArxivReaderTool reads for selected related papers
+        - node: subject_matter_understanding
+          action: build methods map, datasets, metrics, strongest baselines with numbers
+        - node: novelty_refinement
+          action: compare original to related work, update overlaps and potential novel pieces
+      - node: exploratory_branches
+        action: optionally follow subtopics that clarify applications or novelty depth
+  - name: Search relevant startups
+    goal: Landscape scan
+    tree:
+      - node: query_space
+        action: search for companies per primary topics and capabilities
+        subtasks:
+        - node: iterative search
+        - node: ensure_coverage
+          action: find at least 5 relevant startups with brief descriptions and urls
+      - node: cluster
+        action: group by subfield, buyer, or delivery model
+  - name: Brainstore startup candidates
+    goal: Synthesize commercialization options
+    tree:
+      - node: synthesize_6
+        action: create 6 distinct industries where the paper's core tech and insights can be applied
+      - node: industry challenge research
+        goal: find the challenge in each industry that can be solved by the technology
+        subtasks: for each industry
+        - node: challenge-tech match
+          action: think about industry problems and what the proposed technology can do, and then conclude with how the technology can help the industry
+        end subtask
+        summarize all challenge-tech matches
+      - node: include_fields
+        action: generate startup ideas
+        subtasks: for each legit challenge-tech matches you find
+        - node: business idea
+          action: analyze target customer, problem, product, delivery, revenue model, moat hypothesis, 12 month milestones
+      - node: choose_top_three
+        action: select 3 most promising company ideas based on feasibility, novelty leverage, and GTM wedge.
+answer:
+  assemble:
+    - novelty_ranking with score 0 to 100 and a concise explanation tied to surveys and related work
+    - industries_broad ranked list
+    - top_three_startup_ideas with name, headline, industry, business_model, moat
+    - citations with ISO 8601 accessed_at timestamps
+quality_gate:
+  checks:
+    - at_least_three_surveys: true
+    - at_least_five_startups_found: true
+    - six_candidates_generated: true
+    - citations_present_for_recent_claims: true
+    - clarity_pass: true
 </agent_loop>
 `;
 
@@ -200,8 +338,14 @@ export const processPaper = internalAction({
               if (data) {
                 try {
                   const parsed = JSON.parse(data);
-                  const content = parsed.choices?.[0]?.delta?.content;
+                  let content = parsed.choices?.[0]?.delta?.content;
 
+                  // within content, cut out anything that comes after tool_result: in "" or '', replace with "" or ''
+                  // Single quotes
+                  content = content.replace(/'tool_result'\s*:\s*'(.*?)'/g, `'tool_result': ''`);
+
+                  // Double quotes
+                  content = content.replace(/"tool_result"\s*:\s*"(.*?)"/g, `"tool_result": ""`);
                   if (content) {
                     streamedResult += content;
 
