@@ -76,7 +76,7 @@ http.route({
       });
     }
 
-    if (tool_name === 'SurveyReaderTool') {
+    if (tool_name === 'ReaderTool') {
       try {
         // Use the parameters from the already parsed body
         const { url, pageIndex = 0 } = parameters;

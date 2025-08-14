@@ -30,8 +30,15 @@ export const stripOutEverythingExceptTitleToolNameAndSubtasks = (
   response: ModelResponse,
 ): ModelResponse => {
   const stripTask = (task: Task): Task => ({
-    title: task?.title,
-    tooluse: task.tooluse ? { tool_name: task?.tooluse?.tool_name } : undefined,
+    ...task,
+    tooluse: task.tooluse
+      ? {
+          tool_name: task?.tooluse?.tool_name,
+          parameters: task?.tooluse?.parameters,
+          tool_result: !!task?.tooluse?.tool_result ? '✓' : '',
+        }
+      : undefined,
+    conclusion: !!task?.conclusion ? '✓' : '',
     subtasks: task?.subtasks ? task?.subtasks.map(stripTask) : undefined,
   });
 
@@ -74,10 +81,10 @@ const outputToArray = (reasoningTasks: Task[]) => {
 
   // Helper to create a node object for the grid
   const makeNode = (node: Task) => {
-    if ('thought' in node) {
+    if ('title' in node) {
       return {
         thought: node.thought,
-        title: node.title, // fallback if no title
+        title: node.title || node.thought, // fallback if no title
         tooluse: node.tooluse || false,
         conclusion: node.conclusion,
         subtasks: node.subtasks ? node.subtasks.length : 0,
@@ -316,7 +323,7 @@ export const TreeView = ({ output }: { output: any }) => {
                                   </span>
                                 ) : (
                                   <span className="animate-in fade-in slide-in-from-left-4 duration-200">
-                                    Tool called
+                                    ✓
                                   </span>
                                 )}
                               </>

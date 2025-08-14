@@ -1,11 +1,62 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { useMutation, useQuery } from 'convex/react';
 import { api } from '../convex/_generated/api';
 import { Id } from '../convex/_generated/dataModel';
 import { TreeView } from '@/components/ui/tree/TreeView';
 import { parse } from 'partial-json';
+
+// Animated Counter Component
+function AnimatedCounter({ value }: { value: number }) {
+  const [displayValue, setDisplayValue] = useState(value);
+  const [isAnimating, setIsAnimating] = useState(false);
+
+  useEffect(() => {
+    if (value !== displayValue) {
+      setIsAnimating(true);
+      const increment = value > displayValue ? 1 : -1;
+      const step = Math.abs(value - displayValue) / 20; // Animate over 20 steps
+
+      let current = displayValue;
+      const timer = setInterval(() => {
+        current += increment * Math.ceil(step);
+        if ((increment > 0 && current >= value) || (increment < 0 && current <= value)) {
+          current = value;
+          clearInterval(timer);
+          setIsAnimating(false);
+        }
+        setDisplayValue(Math.round(current));
+      }, 50); // Update every 50ms
+
+      return () => clearInterval(timer);
+    }
+  }, [value, displayValue]);
+
+  const formattedValue = displayValue.toLocaleString();
+
+  return (
+    <div
+      className={`font-mono text-3xl font-bold text-blue-600 transition-all duration-200 ${
+        isAnimating ? 'scale-105' : 'scale-100'
+      }`}
+    >
+      {formattedValue.split('').map((char, index) => (
+        <span
+          key={`${index}-${char}`}
+          className={`inline-block transition-all duration-300 ${
+            isAnimating ? 'animate-pulse' : ''
+          }`}
+          style={{
+            animationDelay: `${index * 50}ms`,
+          }}
+        >
+          {char}
+        </span>
+      ))}
+    </div>
+  );
+}
 
 export default function Home() {
   const [paperInput, setPaperInput] = useState('');
@@ -54,9 +105,58 @@ export default function Home() {
   };
 
   return (
-    <div className="flex min-h-screen flex-col bg-gradient-to-br from-slate-50 to-gray-100">
+    <div className="relative flex min-h-screen flex-col overflow-hidden bg-white">
+      {/* Animated Background Pattern */}
+      <div className="absolute inset-0 opacity-5">
+        {/* Grid Pattern */}
+        <div
+          className="absolute inset-0"
+          style={{
+            backgroundImage: `
+            linear-gradient(to right, #e5e7eb 1px, transparent 1px),
+            linear-gradient(to bottom, #e5e7eb 1px, transparent 1px)
+          `,
+            backgroundSize: '40px 40px',
+          }}
+        ></div>
+
+        {/* Floating Geometric Shapes */}
+        <div className="absolute top-20 left-10 h-32 w-32 animate-pulse rounded-full border-2 border-blue-200"></div>
+        <div
+          className="absolute top-40 right-20 h-24 w-24 rotate-45 animate-bounce border-2 border-gray-300"
+          style={{ animationDuration: '3s' }}
+        ></div>
+        <div
+          className="absolute bottom-32 left-1/4 h-20 w-20 animate-pulse rounded-lg border-2 border-blue-300"
+          style={{ animationDelay: '1s' }}
+        ></div>
+        <div
+          className="absolute top-1/3 right-1/3 h-16 w-16 animate-ping rounded-full border-2 border-gray-200"
+          style={{ animationDuration: '4s' }}
+        ></div>
+        <div
+          className="absolute right-10 bottom-20 h-28 w-28 rotate-12 animate-bounce border-2 border-blue-100"
+          style={{ animationDuration: '2.5s', animationDelay: '0.5s' }}
+        ></div>
+
+        {/* Scattered Dots */}
+        <div className="absolute top-16 left-1/3 h-3 w-3 animate-pulse rounded-full bg-blue-200"></div>
+        <div
+          className="absolute top-1/2 left-20 h-2 w-2 animate-ping rounded-full bg-gray-300"
+          style={{ animationDuration: '3s' }}
+        ></div>
+        <div
+          className="absolute right-1/4 bottom-40 h-4 w-4 animate-pulse rounded-full bg-blue-100"
+          style={{ animationDelay: '2s' }}
+        ></div>
+        <div
+          className="absolute top-1/4 right-12 h-2 w-2 animate-ping rounded-full bg-gray-200"
+          style={{ animationDuration: '2s' }}
+        ></div>
+      </div>
+
       {/* Hero Section */}
-      <div className="flex flex-1 flex-col items-center justify-center px-4 py-12">
+      <div className="relative z-10 flex flex-1 flex-col items-center justify-center px-4 py-12">
         <div className="mb-12 text-center">
           <h1 className="mb-6 text-5xl leading-tight font-bold text-gray-900 md:text-6xl">
             We&apos;ll help you understand
@@ -75,7 +175,7 @@ export default function Home() {
           <div className="w-full max-w-2xl">
             <form onSubmit={handleSubmit} className="space-y-6">
               {/* Paper Input Box */}
-              <div className="rounded-2xl border border-gray-200 bg-white p-8 shadow-xl">
+              <div className="rounded-2xl border border-gray-200 bg-white p-8">
                 <label
                   htmlFor="paper-input"
                   className="mb-4 block text-lg font-semibold text-gray-900"
@@ -108,7 +208,7 @@ export default function Home() {
               <button
                 type="submit"
                 disabled={!paperInput.trim() || isLoading}
-                className="w-full transform rounded-xl bg-gradient-to-r from-blue-600 to-purple-600 px-8 py-4 text-lg font-semibold text-white shadow-lg transition-all duration-200 hover:scale-[1.02] hover:from-blue-700 hover:to-purple-700 hover:shadow-xl disabled:scale-100 disabled:cursor-not-allowed disabled:from-gray-400 disabled:to-gray-500"
+                className="w-full transform rounded-xl bg-blue-600 px-8 py-4 text-lg font-semibold text-white transition-all duration-200 hover:scale-[1.02] hover:bg-blue-700 disabled:scale-100 disabled:cursor-not-allowed disabled:bg-gray-400"
               >
                 {isLoading ? (
                   <div className="flex items-center justify-center space-x-3">
@@ -126,95 +226,134 @@ export default function Home() {
           <div className="fixed inset-0 flex flex-col bg-white p-6">
             <div className="flex h-full max-w-none flex-col">
               {/* Full Screen Header */}
-              <div className="mb-2 border-b border-gray-200 pb-6">
-                <div className="flex items-center justify-between">
-                  {/* Back Button - Small Arrow */}
-                  <button
-                    onClick={() => {
-                      setShowReport(false);
-                      setPaperInput('');
-                      setAnalysisId(null);
-                    }}
-                    className="flex h-10 w-10 items-center justify-center rounded-full bg-gray-100 text-gray-700 transition-colors hover:bg-gray-200"
-                    title="Back to Start"
-                  >
-                    <svg className="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path
-                        strokeLinecap="round"
-                        strokeLinejoin="round"
-                        strokeWidth={2}
-                        d="M10 19l-7-7m0 0l7-7m-7 7h18"
-                      />
-                    </svg>
-                  </button>
+              <div className="mb-2 border-b border-gray-100 pb-4">
+                <div className="mx-auto max-w-6xl">
+                  {/* Top Row - Back Button and Title */}
+                  <div className="mb-6 flex items-center justify-between">
+                    <button
+                      onClick={() => {
+                        setShowReport(false);
+                        setPaperInput('');
+                        setAnalysisId(null);
+                      }}
+                      className="flex items-center space-x-2 rounded-lg border border-gray-200 px-4 py-2 text-gray-600 transition-colors hover:bg-gray-50 hover:text-gray-800"
+                      title="Back to Start"
+                    >
+                      <svg
+                        className="h-4 w-4"
+                        fill="none"
+                        stroke="currentColor"
+                        viewBox="0 0 24 24"
+                      >
+                        <path
+                          strokeLinecap="round"
+                          strokeLinejoin="round"
+                          strokeWidth={2}
+                          d="M10 19l-7-7m0 0l7-7m-7 7h18"
+                        />
+                      </svg>
+                      <span className="text-sm font-medium">Back</span>
+                    </button>
 
-                  {/* Center Section - Token Count (Emphasized), Paper, Status */}
-                  <div className="flex flex-col items-center space-y-3">
-                    {/* Token Count - Emphasized */}
-                    <div className="flex items-center space-x-3 rounded-lg border border-blue-200 bg-blue-50 px-6 py-3">
-                      <span className="text-lg font-semibold text-blue-700">Tokens Reviewed:</span>
-                      <span className="font-mono text-2xl font-bold text-blue-900">
-                        {paperAnalysis?.tokensRead
-                          ? paperAnalysis.tokensRead.toLocaleString()
-                          : '0'}
-                      </span>
+                    <h1 className="text-2xl font-bold text-gray-900">Research Analysis</h1>
+
+                    <div className="w-20"></div>
+                  </div>
+
+                  {/* Main Info Grid */}
+                  <div className="grid grid-cols-1 gap-6 lg:grid-cols-3">
+                    {/* Token Count Card */}
+                    <div className="rounded-xl border border-gray-200 bg-white p-6">
+                      <div className="text-center">
+                        <div className="text-sm font-medium tracking-wide text-gray-500 uppercase">
+                          Tokens Reviewed
+                        </div>
+                        <div className="mt-2">
+                          <AnimatedCounter value={paperAnalysis?.tokensRead || 0} />
+                        </div>
+                      </div>
                     </div>
 
-                    {/* Paper Link and Status Row */}
-                    <div className="flex items-center space-x-8">
-                      {/* Paper Link */}
-                      <div className="flex items-center space-x-2">
-                        <span className="text-sm font-medium text-gray-500">Paper:</span>
+                    {/* Paper Info Card */}
+                    <div className="rounded-xl border border-gray-200 bg-white p-6">
+                      <div className="text-center">
+                        <div className="mb-2 text-sm font-medium tracking-wide text-gray-500 uppercase">
+                          Paper Source
+                        </div>
                         <a
                           href={paperInput}
                           target="_blank"
                           rel="noopener noreferrer"
-                          className="max-w-md truncate text-blue-600 underline hover:text-blue-800"
+                          className="inline-flex items-center space-x-1 text-blue-600 transition-colors hover:text-blue-800"
                           title={paperInput}
                         >
-                          {paperInput}
+                          <span className="text-sm font-medium">arXiv Paper</span>
+                          <svg
+                            className="h-4 w-4"
+                            fill="none"
+                            stroke="currentColor"
+                            viewBox="0 0 24 24"
+                          >
+                            <path
+                              strokeLinecap="round"
+                              strokeLinejoin="round"
+                              strokeWidth={2}
+                              d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14"
+                            />
+                          </svg>
                         </a>
                       </div>
+                    </div>
 
-                      {/* Status */}
-                      <div className="flex items-center space-x-2">
-                        <span className="text-sm font-medium text-gray-500">Status:</span>
+                    {/* Status Card */}
+                    <div className="rounded-xl border border-gray-200 bg-white p-6">
+                      <div className="text-center">
+                        <div className="mb-2 text-sm font-medium tracking-wide text-gray-500 uppercase">
+                          Status
+                        </div>
                         {paperAnalysis ? (
-                          <div className="flex items-center space-x-2">
+                          <div className="flex items-center justify-center space-x-2">
                             {paperAnalysis.status === 'pending' && (
                               <>
-                                <div className="h-3 w-3 animate-pulse rounded-full bg-yellow-500"></div>
-                                <span className="font-medium text-yellow-600">Pending</span>
+                                <div className="h-2 w-2 animate-pulse rounded-full bg-yellow-500"></div>
+                                <span className="text-sm font-medium tracking-wide text-yellow-600 uppercase">
+                                  Pending
+                                </span>
                               </>
                             )}
                             {paperAnalysis.status === 'processing' && (
                               <>
-                                <div className="h-3 w-3 animate-spin rounded-full border-b-2 border-blue-600"></div>
-                                <span className="font-medium text-blue-600">Processing</span>
+                                <div className="h-2 w-2 animate-spin rounded-full border border-blue-600 border-t-transparent"></div>
+                                <span className="text-sm font-medium tracking-wide text-blue-600 uppercase">
+                                  Processing
+                                </span>
                               </>
                             )}
                             {paperAnalysis.status === 'completed' && (
                               <>
-                                <div className="h-3 w-3 rounded-full bg-green-500"></div>
-                                <span className="font-medium text-green-600">Completed</span>
+                                <div className="h-2 w-2 rounded-full bg-green-500"></div>
+                                <span className="text-sm font-medium tracking-wide text-green-600 uppercase">
+                                  Completed
+                                </span>
                               </>
                             )}
                             {paperAnalysis.status === 'failed' && (
                               <>
-                                <div className="h-3 w-3 rounded-full bg-red-500"></div>
-                                <span className="font-medium text-red-600">Failed</span>
+                                <div className="h-2 w-2 rounded-full bg-red-500"></div>
+                                <span className="text-sm font-medium tracking-wide text-red-600 uppercase">
+                                  Failed
+                                </span>
                               </>
                             )}
                           </div>
                         ) : (
-                          <span className="text-gray-500">Loading...</span>
+                          <span className="text-sm font-medium tracking-wide text-gray-400 uppercase">
+                            Loading
+                          </span>
                         )}
                       </div>
                     </div>
                   </div>
-
-                  {/* Right Side Spacer */}
-                  <div className="w-10"></div>
                 </div>
               </div>
 
@@ -222,11 +361,6 @@ export default function Home() {
               {paperAnalysis?.response ? (
                 <div className="flex min-h-0 flex-1 flex-col">
                   <div className="mb-2 flex flex-shrink-0 items-center justify-between">
-                    <h2 className="text-xl font-bold text-gray-900">
-                      {paperAnalysis.status === 'completed'
-                        ? 'Analysis Complete'
-                        : 'Analysis in Progress'}
-                    </h2>
                     {paperAnalysis.status === 'processing' &&
                       paperAnalysis.response?.isStreaming && (
                         <div className="flex items-center space-x-2 text-blue-600">
@@ -246,15 +380,15 @@ export default function Home() {
                     ) : (
                       // Show final formatted response
                       <div className="space-y-6">
-                        <div className="rounded-lg bg-white p-6 shadow-sm">
+                        <div className="rounded-lg border border-gray-200 bg-white p-6">
                           <h3 className="mb-4 text-xl font-semibold text-gray-900">Summary:</h3>
                           <div className="text-base leading-relaxed whitespace-pre-wrap text-gray-800">
                             {paperAnalysis.answer}
                           </div>
                         </div>
-                        <details className="rounded-lg bg-white p-6 shadow-sm">
+                        <details className="rounded-lg border border-gray-200 bg-white p-6">
                           <summary className="cursor-pointer text-xl font-semibold text-gray-900 hover:text-blue-600">
-                            Raw Response (Click to expand)
+                            Raw Response with tool results pruned (Click to expand)
                           </summary>
                           <pre className="mt-4 overflow-auto text-sm whitespace-pre-wrap text-gray-700">
                             {JSON.stringify(paperAnalysis.response)}
@@ -286,7 +420,7 @@ export default function Home() {
 
       {/* Footer - Only show when not in report mode */}
       {!showReport && (
-        <footer className="px-4 py-6">
+        <footer className="relative z-10 px-4 py-6">
           <div className="text-center">
             <a
               className="text-gray-500 transition-colors duration-200 hover:text-gray-700"

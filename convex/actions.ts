@@ -27,50 +27,8 @@ const SEARCH_TOOLS = [
   {
     type: 'function',
     name: 'ReaderTool',
-    description: 'Read the content of general webpages using url with a goal.',
-    url: 'http://192.222.54.121:8050/call_tool',
-    method: 'POST',
-    timeout: 10,
-    parameters: {
-      type: 'object',
-      properties: {
-        url: {
-          type: 'string',
-          description: 'The URL of the webpage to read.',
-        },
-        goal: {
-          type: 'string',
-          description: 'The goal of reading the webpage.',
-        },
-      },
-      required: ['url', 'goal'],
-      additionalProperties: false,
-    },
-  },
-  {
-    type: 'function',
-    name: 'ArxivReaderTool',
-    description: "Read an arxiv paper with the paper link on arxiv and find it's main points.",
-    url: 'http://192.222.54.121:8050/call_tool',
-    method: 'POST',
-    timeout: 10,
-    parameters: {
-      type: 'object',
-      properties: {
-        arxiv_url: {
-          type: 'string',
-          description: 'The URL of the arxiv paper to read.',
-        },
-      },
-      required: ['arxiv_url'],
-      additionalProperties: false,
-    },
-  },
-  {
-    type: 'function',
-    name: 'SurveyReaderTool',
     description:
-      'Read **survey pages** by retrieving paginated content. Use pageIndex to get different sections (0=first 200k tokens, 1=next 200k tokens, etc). Only use for survey papers, not regular research papers. If the webpage_understanding tool fails, you can use this tool as well.',
+      'Read webpages or **arxiv pages** by retrieving paginated content. Use pageIndex to get different sections (0=first 200k tokens, 1=next 200k tokens, etc). Only use for survey papers, not regular research papers. If the webpage_understanding tool fails, you can use this tool as well.',
     url: 'https://flexible-hedgehog-91.convex.site/tools',
     method: 'POST',
     timeout: 30,
@@ -80,7 +38,7 @@ const SEARCH_TOOLS = [
         url: {
           type: 'string',
           description:
-            'The arxiv html url of the **survey paper**: https://arxiv.org/html/[PAPER_ID]',
+            'the url of the webpage you want to read. for arxiv papers, the format is the html url of the paper: https://arxiv.org/html/[PAPER_ID]',
         },
         pageIndex: {
           type: 'integer',
@@ -94,8 +52,7 @@ const SEARCH_TOOLS = [
   },
 ];
 
-const systemPrompt = `
-You are Tim. You are a helpful assistant.
+const systemPrompt = `You are Tim. You are a helpful assistant.
 
 Following this agent workflow:
 <agent_loop>
@@ -144,7 +101,7 @@ constraints:
     - Prefer primary sources.
 phases:
   - name: Preprocessing
-    goal: Validate input and build initial context using the ArxivReaderTool
+    goal: Validate input and build initial context using the ReaderTool
     tree:
       - node: validate_input
         action: ensure arxiv_url is arxiv.org; normalize to HTML form
@@ -165,10 +122,10 @@ phases:
         subtasks: for each primary topic
         goal: find the novelty of the input paper among previous research in this topic
           subtasks: for each survey
-            goal: read survey
+            goal: read survey using ReaderTool
             subtasks: for each page in the survey
             goal: read page
-              - subnode: read page using the SurveyReaderTool, specifying the page index, then summarize relevant studies you found in this page with their approach and limitations.
+              - subnode: read page using the ReaderTool, specifying the page index, then summarize relevant studies you found in this page with their approach and limitations.
               - subnode: compare the input paper with the summary for relevant studies, decide how novel is the input paper and explain the reason
             end subtask when hasNextPage is false
             aggregate the innovations made by the paper compared to existing work mentioned in the survey
@@ -183,10 +140,10 @@ phases:
     goal: Understand subject matter and refine novelty
     tree:
       - node: discover_related
-        action: use web search for benchmarks and adjacent methods
+        action: use web search and ReaderTool for benchmarks and adjacent methods
         subtasks
         - node: read_related
-          action: ArxivReaderTool reads for selected related papers
+          action: ReaderTool reads for selected related papers
         - node: subject_matter_understanding
           action: build methods map, datasets, metrics, strongest baselines with numbers
         - node: novelty_refinement
@@ -197,7 +154,7 @@ phases:
     goal: Landscape scan
     tree:
       - node: query_space
-        action: search for companies per primary topics and capabilities
+        action: search for companies per primary topics and capabilities and use ReaderTool for details
         subtasks:
         - node: iterative search
         - node: ensure_coverage
@@ -221,14 +178,15 @@ phases:
         subtasks: for each legit challenge-tech matches you find
         - node: business idea
           action: analyze target customer, problem, product, delivery, revenue model, moat hypothesis, 12 month milestones
-      - node: choose_top_three
-        action: select 3 most promising company ideas based on feasibility, novelty leverage, and GTM wedge.
+      - node: top_three_startup_ideas
+        action: select 3 most promising company ideas based on feasibility, novelty leverage, and GTM wedge. Recall all details of these company ideas and add necessary enrichments
+    After getting the startup ideas, jump to the answer assemble step.
 answer:
   assemble:
+    - recall the startup ideas you put together earlier
     - novelty_ranking with score 0 to 100 and a concise explanation tied to surveys and related work
     - industries_broad ranked list
-    - top_three_startup_ideas with name, headline, industry, business_model, moat
-    - citations with ISO 8601 accessed_at timestamps
+    - top_three_startup_ideas with all details that have been mentioned
 quality_gate:
   checks:
     - at_least_three_surveys: true
@@ -236,8 +194,7 @@ quality_gate:
     - six_candidates_generated: true
     - citations_present_for_recent_claims: true
     - clarity_pass: true
-</agent_loop>
-`;
+</agent_loop>`;
 
 // given a nested
 
@@ -287,7 +244,7 @@ export const processPaper = internalAction({
         ],
         stream: true,
         top_p: 0.95,
-        temperature: 0.3,
+        temperature: 0.5,
         tools: SEARCH_TOOLS,
       };
 
@@ -341,14 +298,14 @@ export const processPaper = internalAction({
               if (data) {
                 try {
                   const parsed = JSON.parse(data);
-                  let content = parsed.choices?.[0]?.delta?.content;
+                  const content = parsed.choices?.[0]?.delta?.content;
 
-                  // within content, cut out anything that comes after tool_result: in "" or '', replace with "" or ''
-                  // Single quotes
-                  content = content.replace(/'tool_result'\s*:\s*'(.*?)'/g, `'tool_result': ''`);
+                  //   // within content, cut out anything that comes after tool_result: in "" or '', replace with "" or ''
+                  //   // Single quotes
+                  //   content = content.replace(/'tool_result'\s*:\s*'(.*?)'/g, `'tool_result': ''`);
 
-                  // Double quotes
-                  content = content.replace(/"tool_result"\s*:\s*"(.*?)"/g, `"tool_result": ""`);
+                  //   // Double quotes
+                  //   content = content.replace(/"tool_result"\s*:\s*"(.*?)"/g, `"tool_result": ""`);
                   if (content) {
                     streamedResult += content;
 
