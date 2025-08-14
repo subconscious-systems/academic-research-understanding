@@ -1,10 +1,10 @@
 import { internalAction } from './_generated/server';
 import { internal, api } from './_generated/api';
 import { v } from 'convex/values';
-import { FunctionDefinition } from 'openai/resources';
 
-const tools: FunctionDefinition[] = [
+const SEARCH_TOOLS = [
   {
+    type: 'function',
     name: 'SearchTool',
     description: 'help you find information on the internet.',
     url: 'http://192.222.54.121:8050/call_tool',
@@ -23,6 +23,7 @@ const tools: FunctionDefinition[] = [
     },
   },
   {
+    type: 'function',
     name: 'ReaderTool',
     description: 'Read the content of general webpages using url with a goal.',
     url: 'http://192.222.54.121:8050/call_tool',
@@ -45,6 +46,7 @@ const tools: FunctionDefinition[] = [
     },
   },
   {
+    type: 'function',
     name: 'ArxivReaderTool',
     description: "Read an arxiv paper with the paper link on arxiv and find it's main points.",
     url: 'http://192.222.54.121:8050/call_tool',
@@ -62,237 +64,150 @@ const tools: FunctionDefinition[] = [
       additionalProperties: false,
     },
   },
-] as unknown as FunctionDefinition[];
+  //   {
+  //     type: 'function',
+  //     name: 'SurveyReaderTool',
+  //     description:
+  //       'Read large documents by retrieving paginated content chunks. Use pageIndex to get different sections (0=first 200k tokens, 1=next 200k tokens, etc).',
+  //     url: 'https://flexible-hedgehog-91.convex.site/tools',
+  //     method: 'POST',
+  //     timeout: 30,
+  //     parameters: {
+  //       type: 'object',
+  //       properties: {
+  //         url: {
+  //           type: 'string',
+  //           description: 'The URL of the large document to read.',
+  //         },
+  //         pageIndex: {
+  //           type: 'integer',
+  //           description:
+  //             'The page offset for pagination (0=first 200k tokens, 1=next 200k tokens, etc). Defaults to 0.',
+  //         },
+  //       },
+  //       required: ['url'],
+  //       additionalProperties: false,
+  //     },
+  //   },
+];
 
 const systemPrompt = `
 You are Tim. You are a helpful assistant.
 Following this agent workflow:
 <agent_loop>
 name: arxiv-to-startup-agent
-version: 1.0
+version: 1.2
 meta:
   author: You
   description: >
-    Takes an arXiv paper URL, identifies the research gap and commercial value,
-    maps to concrete business problems, and proposes 3 startup opportunities
-    with revenue model, competition, and growth potential.
+    Focus on five core steps with flexible, branching reasoning trees.
+    Validate an arXiv link, read and compare surveys and related work,
+    find startups, and generate commercialization ideas.
+    Any arXiv links should be normalized to the HTML format:
+    Take the last path segment from the provided URL (including version),
+    and append it to "https://arxiv.org/html/". For example:
+    https://arxiv.org/pdf/2303.18223 → https://arxiv.org/html/2303.18223v16
   style:
     tone: concise, analytical, plain-language
-    avoid:
-      - chain-of-thought exposition
-      - purple prose
-      - filler
     must:
-      - cite sources when using the web
-      - state dates explicitly when relevant
+      - cite sources for time-sensitive or external claims
+      - state dates explicitly
       - be clear about uncertainty
+      - do not reveal hidden chain-of-thought; output only conclusions and evidence
 io:
   expected_input:
     arxiv_url: string
-    user_constraints:
-      optional:
-        - target_industries: list[string]
-        - geography: string
-        - pricing_hint: string
-        - risk_tolerance: enum[low,medium,high]
-        - exclude_models: list[string]
   output_schema:
     type: object
     properties:
-      paper:
-        title: string
-        authors: list[string]
-        year: integer
-        arxiv_id: string
-        summary: string
-        key_claims: list[string]
-      research_gap:
-        type: object
-        properties:
-          gap_type: enum[performance,capability,access,usability,other]
-          evidence: list[string] # short bullet points with citations
-          baseline_comparison: string
-      industrial_applications: list[string] # ranked; with brief 1-liners + citations
-      business_problems:
-        primary: list[string]
-        secondary: list[string]
-      commercial_value:
-        tam_sam_som:
-          tam: string
-          sam: string
-          som: string
-          methodology_note: string
-        value_drivers: list[string] # e.g., cost↓, speed↑, accuracy↑, compliance
-        blockers: list[string]      # e.g., data access, regulation, IP
-      startup_ideas:
+      novelty_ranking:
+        score_0_to_100: number
+        explanation: string
+      industries_broad: list[string]
+      top_three_startup_ideas:
         type: list
         items:
           name: string
-          core_tech: string
-          target_customer: string
-          problem_statement: string
-          product:
-            description: string
-            delivery: enum[SaaS,API,OnPrem,HW+SW,Services+SW]
-          revenue_model: list[string] # e.g., tiered SaaS, per-API-call, license + support
-          pricing_back_of_envelope: string # quick math & assumptions
-          competition:
-            current_alternatives: list[string]
-            differentiators: list[string]
-            moat_hypotheses: list[string]
-          go_to_market: list[string]
-          risks_mitigations:
-            risks: list[string]
-            mitigations: list[string]
-          growth:
-            short_term: list[string]
-            long_term: list[string]
-          milestones_12mo: list[string]
+          headline: string
+          industry: string
+          business_model: string
+          moat: list[string]
       citations: list[object] # {source, url, accessed_at, note}
-      appendix:
-        related_work: list[string]
-        key_metrics_to_validate: list[string]
-        evaluation_plan: list[string]
 constraints:
-  max_iterations: 6
-  timebox_seconds: 120
   musts:
+    - Only accept inputs from arxiv.org (abs or pdf). Otherwise halt with message.
     - Never fabricate citations or data.
-    - Prefer primary sources (paper, official repos, docs).
-    - Use absolute dates (e.g., "2025-08-13") when referring to “today/now.”
-    - If confidence is low, say so and propose how to validate.
-    - Do not reveal hidden reasoning; provide just conclusions and brief rationale.
-  stop_conditions:
-    - output_schema fully populated OR
-    - iteration budget exhausted
-tools:
-  - name: SearchTool
-    description: help you search information on Google.
-    args: { query: string, a natural language query for the search engine. }
-  - name: ReaderTool
-    description: Read the content of general webpages using url with a goal.
-    args: { url: string, The URL of the webpage to read. goal: string, The goal of reading the webpage. }
-  - name: ArxivReaderTool
-    description: Read an arxiv paper with the paper link on arxiv and find it's main points.
-    args: { arxiv_url: string, The URL of the arxiv paper to read. }
-memory:
-  write:
-    - key: recent_sources
-      when: after_step: "Research aggregation"
-      value: top 10 sources with titles, URLs, dates
-  read:
-    - key: recent_sources
-rubric:
-  evidence:
-    - Every factual, time-sensitive claim has a citation.
-    - Comparisons to baseline are specific (datasets, metrics, cost).
-  reasoning:
-    - Gap classification aligns with evidence from paper + benchmarks.
-    - Commercial value ties to quantified pain (even if rough).
-  ideas:
-    - Each idea maps 1:1 to a business problem.
-    - Clear economic buyer and GTM wedge.
-    - Moat is plausible (IP, data, workflows, distribution).
-  clarity:
-    - Jargon minimized; acronyms expanded once.
-    - Bullet-first with short paragraphs.
-loop:
-  - step: Parse Input
-    action: >
-      Validate arxiv_url; normalize; capture user constraints.
-    on_error: halt_with_message
-  - step: Retrieve Paper
-    call: arxiv.metadata
-    with: { url_or_id: {arxiv_url} }
-    then:
-      - call: pdf.parse
-        with: { url: {paper.pdf_url}, sections: ["Title","Authors","Abstract","Introduction","Method","Experiments","Results","Conclusion","References"] }
-      - extract:
-          title: $.Title
-          authors: $.Authors
-          abstract: $.Abstract
-          year: detect_from_pdf_or_metadata
-      - summarize:
-          summary: 5-7 sentence plain-language brief of abstract+conclusion
-          key_claims: 3-5 bullets with metric or capability
-  - step: Related Research & Applications
-    call: scholarly.find_related
-    with: { title: {title}, abstract: {abstract}, limit: 12 }
-    then:
-      - call: web.search
-        with:
-          query: "{title} applications industry case study"
-          recency_days: 3650
-      - aggregate:
-          industrial_applications: ranked list with one-liners + source
-  - step: Identify Research Gap
-    action: >
-      Compare paper claims vs state of the art (SOTA) using related work; classify gap_type.
-    evidence:
-      - benchmarks, ablations, or cost/speed deltas
-    output:
-      research_gap:
-        gap_type: one_of[performance,capability,access,usability,other]
-        evidence: 3-6 short bullets (each ends with [#])
-        baseline_comparison: 1-2 sentences with numbers if available
-  - step: Map to Business Problems
-    action: >
-      For each top industrial application, articulate concrete pains (who, where, consequence, cost).
-    output:
-      business_problems:
-        primary: 3-6 bullets
-        secondary: 3-6 bullets
-  - step: Commercial Value Sizing
-    action: >
-      Use market.size_estimator + calc for back-of-envelope TAM/SAM/SOM; note assumptions.
-    output:
-      commercial_value:
-        tam_sam_som: filled
-        value_drivers: 3-5 bullets
-        blockers: 3-5 bullets (regulatory, data, integration, IP)
-  - step: Generate Startup Ideas (x3)
-    for_each: i in [1..3]
-    action: >
-      Convert a high-value business problem into a startup concept with core tech from the paper.
-    include:
-      - delivery model (SaaS/API/OnPrem/HW+SW/Services+SW)
-      - pricing math (calc)
-      - competition (competitor.lookup + web.search)
-      - moat hypotheses (data network effects, workflow lock-in, IP)
-      - growth paths (adjacent markets, up/down-market)
-      - 12-month milestones
-    ensure:
-      - Each idea solves a distinct problem or targets a distinct ICP (ideal customer profile).
-  - step: Quality Gate
-    checks:
-      - citations_present_for_recent_claims: true
-      - no_fabrication: true
-      - clarity_pass: true
-      - output_schema_complete_or_reasoned_gaps: true
-    if_fail:
-      - refine_explanations
-      - add_citations
-      - simplify_language
-  - step: Produce Output
-    action: >
-      Emit JSON object conforming to output_schema. Keep prose compact; bullets preferred.
-    note:
-      - Include "accessed_at" timestamps (ISO 8601) for each citation.
-      - If data is missing, state “Unknown” and add a validation plan in appendix.
-examples:
-  - name: minimal_run
-    input:
-      arxiv_url: "https://arxiv.org/abs/2401.00001" or "https://arxiv.org/pdf/2401.00001"
-    output_note: >
-      The agent will return a research report with 3 startup ideas,
-      each with revenue model, competition, and growth, plus citations.
-Answer:
-  - detailed articulation of each startup idea, including the following information:
-    - company name
-    - headline
-    - industry
-    - business model
-    - moat againt other companies
+    - Prefer primary sources.
+phases:
+  - name: Preprocessing
+    goal: Validate input and build initial context
+    tree:
+      - node: validate_input
+        action: ensure arxiv_url is arxiv.org; normalize to HTML form
+      - node: parse_metadata
+        action: retrieve title, authors, year, abstract, arxiv_id
+      - node: read_paper_fast
+        action: pdf.parse sections ["Title","Authors","Abstract","Intro","Method","Results","Conclusion","References"]
+      - node: generate_topics
+        action: derive 5 to 10 primary topics from abstract, intro, methods
+      - node: list_references_top10
+        action: extract 10 central references with title, venue, year, url, ids
+      - node: find_surveys
+        action: search arXiv, IEEE, ACM for surveys; collect at least 3 relevant surveys
+  - name: Read the survey papers
+    goal: Map overlaps and potential novelty vs surveys
+    tree:
+      - node: read_each_survey
+        action: LargeDocumentTool read with token_window 200000 and stride 20000
+      - node: map_against_original
+        action: for each survey, record overlaps and potential novel components
+      - node: deepen_if_needed
+        condition: uncertainty on novelty or scope gaps
+        action: branch to additional domain surveys or targeted sections
+  - name: Read the related papers
+    goal: Understand subject matter and refine novelty
+    tree:
+      - node: discover_related
+        action: scholarly.find_related plus web search for benchmarks and adjacent methods
+      - node: read_related
+        action: LargeDocumentTool reads for selected related papers
+      - node: subject_matter_understanding
+        action: build methods map, datasets, metrics, strongest baselines with numbers
+      - node: novelty_refinement
+        action: compare original to related work, update overlaps and potential novel pieces
+      - node: exploratory_branches
+        action: optionally follow subtopics that clarify applications or novelty depth
+  - name: Search relevant startups
+    goal: Landscape scan
+    tree:
+      - node: query_space
+        action: search for companies per primary topics and capabilities
+      - node: ensure_coverage
+        action: find at least 5 relevant startups with brief descriptions and urls
+      - node: cluster
+        action: group by subfield, buyer, or delivery model
+  - name: Generate six startup candidates
+    goal: Synthesize commercialization options
+    tree:
+      - node: synthesize_6
+        action: create 6 distinct concepts using the paper’s core tech and insights
+      - node: include_fields
+        action: for each concept include target customer, problem, product, delivery, revenue model, moat hypothesis, 12 month milestones
+      - node: choose_top_three
+        action: select 3 most promising based on feasibility, novelty leverage, and GTM wedge
+answer:
+  assemble:
+    - novelty_ranking with score 0 to 100 and a concise explanation tied to surveys and related work
+    - industries_broad ranked list
+    - top_three_startup_ideas with name, headline, industry, business_model, moat
+    - citations with ISO 8601 accessed_at timestamps
+quality_gate:
+  checks:
+    - at_least_three_surveys: true
+    - at_least_five_startups_found: true
+    - six_candidates_generated: true
+    - citations_present_for_recent_claims: true
+    - clarity_pass: true
 </agent_loop>
 `;
 
@@ -324,7 +239,6 @@ export const processPaper = internalAction({
         status: 'processing',
       });
 
-      console.log('tools', tools);
       console.log('systemPrompt', systemPrompt);
       console.log('paper', paper);
 
@@ -338,76 +252,13 @@ export const processPaper = internalAction({
           },
           {
             role: 'user',
-            content: `Please analyze the academic paper at this URL: ${paper.paperUrl}`,
+            content: `Analyze the academic paper at this URL: ${paper.paperUrl}`,
           },
         ],
         stream: true,
         top_p: 0.95,
         temperature: 0.3,
-        tools: [
-          {
-            type: 'function',
-            name: 'SearchTool',
-            description: 'help you find information on the internet.',
-            url: 'http://192.222.54.121:8050/call_tool',
-            method: 'POST',
-            timeout: 10,
-            parameters: {
-              type: 'object',
-              properties: {
-                query: {
-                  type: 'string',
-                  description: 'A natural language query for the search engine.',
-                },
-              },
-              required: ['query'],
-              additionalProperties: false,
-            },
-          },
-          {
-            type: 'function',
-            name: 'ReaderTool',
-            description: 'Read the content of general webpages using url with a goal.',
-            url: 'http://192.222.54.121:8050/call_tool',
-            method: 'POST',
-            timeout: 10,
-            parameters: {
-              type: 'object',
-              properties: {
-                url: {
-                  type: 'string',
-                  description: 'The URL of the webpage to read.',
-                },
-                goal: {
-                  type: 'string',
-                  description: 'The goal of reading the webpage.',
-                },
-              },
-              required: ['url', 'goal'],
-              additionalProperties: false,
-            },
-          },
-          {
-            type: 'function',
-            name: 'ArxivReaderTool',
-            description:
-              "Read an arxiv paper with the paper link on arxiv and find it's main points.",
-            url: 'http://192.222.54.121:8050/call_tool',
-            method: 'POST',
-            timeout: 10,
-            parameters: {
-              type: 'object',
-              properties: {
-                arxiv_url: {
-                  type: 'string',
-                  description: 'The URL of the arxiv paper to read.',
-                },
-              },
-              required: ['arxiv_url'],
-              additionalProperties: false,
-            },
-          },
-        ],
+        tools: SEARCH_TOOLS,
       };
 
       const response = await fetch('https://api.subconscious.dev/v1/chat/completions', {
@@ -431,8 +282,9 @@ export const processPaper = internalAction({
 
       let accumulatedResponse = '';
       let totalTokens = 0;
+      let iterationCount = 0;
 
-      // Process the streaming response
+      // Simple streaming response processing
       const reader = response.body.getReader();
       const decoder = new TextDecoder();
 
@@ -442,66 +294,52 @@ export const processPaper = internalAction({
 
           if (done) break;
 
+          iterationCount++;
           const chunk = decoder.decode(value, { stream: true });
           const lines = chunk.split('\n');
 
           for (const line of lines) {
-            if (line.startsWith('data: ')) {
+            if (line.startsWith('data: ') && !line.includes('[DONE]')) {
               const data = line.slice(6).trim();
-
-              if (data === '[DONE]') {
-                break;
-              }
-
-              try {
-                const parsed = JSON.parse(data);
-                console.log('chunk', parsed);
-
-                const content = parsed.choices?.[0]?.delta?.content;
-                if (content) {
-                  accumulatedResponse += content;
-
-                  // Update the database with the current accumulated response
-                  await ctx.runMutation(internal.papers.updatePaperWithResponse, {
-                    id: args.paperId,
-                    response: { content: accumulatedResponse, isStreaming: true },
-                    status: 'processing',
-                    tokensRead: totalTokens,
-                  });
+              if (data) {
+                try {
+                  const parsed = JSON.parse(data);
+                  const content = parsed.choices?.[0]?.delta?.content;
+                  if (content) {
+                    accumulatedResponse += content;
+                  }
+                  if (parsed.usage?.total_tokens) {
+                    totalTokens = parsed.usage.total_tokens;
+                  }
+                } catch (parseError) {
+                  // Skip malformed JSON chunks (common in streaming)
+                  console.warn('Skipping malformed JSON chunk:', data.substring(0, 100));
+                  continue;
                 }
-
-                // Track token usage if available
-                if (parsed.usage?.total_tokens) {
-                  totalTokens = parsed.usage.total_tokens;
-                }
-              } catch (parseError) {
-                // Skip malformed JSON chunks
-                console.warn('Failed to parse chunk:', data, parseError);
               }
             }
           }
+
+          // Update database with current progress
+          await ctx.runMutation(internal.papers.updatePaperWithResponse, {
+            id: args.paperId,
+            response: {
+              content: accumulatedResponse,
+              iterationCount,
+              isStreaming: true,
+            },
+            status: 'processing',
+            tokensRead: totalTokens,
+          });
         }
       } finally {
         reader.releaseLock();
       }
 
-      if (!accumulatedResponse) {
-        throw new Error('No response received from OpenAI');
-      }
-
-      // Try to parse the final response as JSON
-      let parsedResponse: unknown;
-      try {
-        parsedResponse = JSON.parse(accumulatedResponse);
-      } catch {
-        // If JSON parsing fails, store as plain text
-        parsedResponse = { content: accumulatedResponse };
-      }
-
       // Final update with completed status and parsed response
       await ctx.runMutation(internal.papers.updatePaperWithResponse, {
         id: args.paperId,
-        response: parsedResponse,
+        response: accumulatedResponse,
         status: 'completed',
         tokensRead: totalTokens,
       });
@@ -509,7 +347,6 @@ export const processPaper = internalAction({
       return {
         success: true,
         paperId: args.paperId,
-        response: parsedResponse,
       };
     } catch (error) {
       // Update status to failed and save error
