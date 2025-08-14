@@ -12,6 +12,7 @@ export default function Home() {
   const [isLoading, setIsLoading] = useState(false);
   const [showReport, setShowReport] = useState(false);
   const [analysisId, setAnalysisId] = useState<Id<'paperAnalyses'> | null>(null);
+  const [urlError, setUrlError] = useState('');
 
   // Convex hooks
   const createPaperAnalysis = useMutation(api.papers.createPaperAnalysis);
@@ -23,6 +24,15 @@ export default function Home() {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!paperInput.trim()) return;
+
+    // Clear any previous errors
+    setUrlError('');
+
+    // Validate URL contains arxiv.org
+    if (!paperInput.trim().includes('arxiv.org')) {
+      setUrlError('URL must contain "arxiv.org". Please enter a valid arXiv paper URL.');
+      return;
+    }
 
     setIsLoading(true);
     setShowReport(false);
@@ -51,12 +61,12 @@ export default function Home() {
           <h1 className="mb-6 text-5xl leading-tight font-bold text-gray-900 md:text-6xl">
             We&apos;ll help you understand
             <span className="block bg-gradient-to-r from-blue-600 to-purple-600 bg-clip-text text-transparent">
-              that technical paper
+              deeply technical papers
             </span>
           </h1>
           <p className="mx-auto max-w-2xl text-xl text-gray-600">
-            Upload or paste an arXiv paper link and get an AI-powered analysis that breaks down
-            complex research into digestible insights.
+            Paste an arXiv paper link and get an in-depth analysis that breaks down complex research
+            and compares it to thousands of pages of other work.
           </p>
         </div>
 
@@ -77,11 +87,20 @@ export default function Home() {
                     id="paper-input"
                     type="text"
                     value={paperInput}
-                    onChange={(e) => setPaperInput(e.target.value)}
+                    onChange={(e) => {
+                      setPaperInput(e.target.value);
+                      // Clear error when user starts typing
+                      if (urlError) setUrlError('');
+                    }}
                     placeholder="https://arxiv.org/abs/1706.03762"
-                    className="w-full rounded-xl border-2 border-gray-200 px-4 py-4 text-lg transition-all duration-200 outline-none focus:border-blue-500 focus:ring-4 focus:ring-blue-100"
+                    className={`w-full rounded-xl border-2 px-4 py-4 text-lg transition-all duration-200 outline-none ${
+                      urlError
+                        ? 'border-red-500 focus:border-red-500 focus:ring-4 focus:ring-red-100'
+                        : 'border-gray-200 focus:border-blue-500 focus:ring-4 focus:ring-blue-100'
+                    }`}
                     disabled={isLoading}
                   />
+                  {urlError && <p className="mt-2 text-sm text-red-600">{urlError}</p>}
                 </div>
               </div>
 
