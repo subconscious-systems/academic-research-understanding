@@ -64,31 +64,31 @@ const SEARCH_TOOLS = [
       additionalProperties: false,
     },
   },
-  //   {
-  //     type: 'function',
-  //     name: 'SurveyReaderTool',
-  //     description:
-  //       'Read large documents by retrieving paginated content chunks. Use pageIndex to get different sections (0=first 200k tokens, 1=next 200k tokens, etc).',
-  //     url: 'https://flexible-hedgehog-91.convex.site/tools',
-  //     method: 'POST',
-  //     timeout: 30,
-  //     parameters: {
-  //       type: 'object',
-  //       properties: {
-  //         url: {
-  //           type: 'string',
-  //           description: 'The URL of the large document to read.',
-  //         },
-  //         pageIndex: {
-  //           type: 'integer',
-  //           description:
-  //             'The page offset for pagination (0=first 200k tokens, 1=next 200k tokens, etc). Defaults to 0.',
-  //         },
-  //       },
-  //       required: ['url'],
-  //       additionalProperties: false,
-  //     },
-  //   },
+  {
+    type: 'function',
+    name: 'SurveyReaderTool',
+    description:
+      'Read large documents by retrieving paginated content chunks. Use pageIndex to get different sections (0=first 200k tokens, 1=next 200k tokens, etc).',
+    url: 'https://flexible-hedgehog-91.convex.site/tools',
+    method: 'POST',
+    timeout: 30,
+    parameters: {
+      type: 'object',
+      properties: {
+        url: {
+          type: 'string',
+          description: 'The URL of the large document to read.',
+        },
+        pageIndex: {
+          type: 'integer',
+          description:
+            'The page offset for pagination (0=first 200k tokens, 1=next 200k tokens, etc). Defaults to 0.',
+        },
+      },
+      required: ['url', 'pageIndex'],
+      additionalProperties: false,
+    },
+  },
 ];
 
 const systemPrompt = `

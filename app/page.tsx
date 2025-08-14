@@ -210,9 +210,18 @@ export default function Home() {
                         </div>
                       ) : (
                         // Show final formatted JSON
-                        <pre className="text-sm whitespace-pre-wrap text-gray-700">
-                          {JSON.stringify(paperAnalysis.response, null, 2)}
-                        </pre>
+                        <div>
+                          <h3 className="mb-3 text-lg font-semibold text-gray-900">Summary:</h3>
+                          <p className="text-sm whitespace-pre-wrap text-gray-700">
+                            {paperAnalysis.response.answer}
+                          </p>
+                          <h3 className="mb-3 text-lg font-semibold text-gray-900">
+                            Raw Response:
+                          </h3>
+                          <pre className="text-sm whitespace-pre-wrap text-gray-700">
+                            {JSON.stringify(paperAnalysis.response, null, 2)}
+                          </pre>
+                        </div>
                       )}
                     </div>
                   </div>

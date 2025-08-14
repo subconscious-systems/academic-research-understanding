@@ -79,7 +79,7 @@ http.route({
     if (tool_name === 'SurveyReaderTool') {
       try {
         // Use the parameters from the already parsed body
-        const { url, offset = 0 } = parameters;
+        const { url, pageIndex = 0 } = parameters;
 
         if (!url) {
           return new Response(JSON.stringify({ error: 'url is required' }), {
@@ -88,11 +88,14 @@ http.route({
           });
         }
 
-        if (typeof offset !== 'number' || offset < 0) {
-          return new Response(JSON.stringify({ error: 'offset must be a non-negative number' }), {
-            status: 400,
-            headers: { 'Content-Type': 'application/json' },
-          });
+        if (typeof pageIndex !== 'number' || pageIndex < 0) {
+          return new Response(
+            JSON.stringify({ error: 'pageIndex must be a non-negative number' }),
+            {
+              status: 400,
+              headers: { 'Content-Type': 'application/json' },
+            },
+          );
         }
 
         // Fetch content from the URL
@@ -122,17 +125,17 @@ http.route({
         // Calculate pagination
         const tokensPerPage = 200000; // 200k tokens per page
         const charsPerPage = tokensPerPage * 2; // 400k characters per page
-        const startIndex = offset * charsPerPage;
+        const startIndex = pageIndex * charsPerPage;
 
-        // Check if offset is out of bounds
+        // Check if pageIndex is out of bounds
         if (startIndex >= content.length) {
           return new Response(
             JSON.stringify({
               error: 'Out of bounds, reached end of large document',
               totalTokens,
               totalCharacters: content.length,
-              requestedOffset: offset,
-              maxOffset: Math.floor(content.length / charsPerPage),
+              requestedPageIndex: pageIndex,
+              maxPageIndex: Math.floor(content.length / charsPerPage),
             }),
             {
               status: 400,
@@ -156,13 +159,13 @@ http.route({
             success: true,
             content: pageContent,
             pagination: {
-              offset,
+              pageIndex,
               tokensPerPage,
               tokenCount: actualTokens,
               totalTokens,
               totalCharacters: content.length,
               hasNextPage: endIndex < content.length,
-              nextOffset: endIndex < content.length ? offset + 1 : null,
+              nextPageIndex: endIndex < content.length ? pageIndex + 1 : null,
             },
           }),
           {
